@@ -143,6 +143,9 @@ public:
   int& l_data() {return record->l_data;}
   const int& l_data() const {return record->l_data;}
 
+  uint8_t* data() {return record->data;}
+  const uint8_t* data() const {return record->data;}
+
   uint32_t& m_data() {return record->m_data;}
   const uint32_t& m_data() const {return record->m_data;}
 
