@@ -12,6 +12,64 @@ using std::string;
 using std::cout;
 using std::endl;
 
+
+// Todo: there seems to be memory leak after copy constructor
+class bam_header {
+public:
+
+  bam_header() {
+    header = sam_hdr_init();
+  }
+
+  bam_header(const bam_header& hdr) {
+    // header = sam_hdr_init();
+    header = hdr.header;
+    header->ref_count++; // = hdr.header;
+  }
+
+  ~bam_header() {
+    if (header != NULL)
+      sam_hdr_destroy(header);
+  }
+
+  // not sure if this will remain, but I don't think it can hurt
+  explicit bam_header(const sam_hdr_t *hdr) {
+    header = sam_hdr_dup(hdr);
+  }
+
+  std::string tostring() const {
+    return std::string(sam_hdr_str(header));
+  }
+
+  int32_t& n_targets() {return header->n_targets;}
+  const int32_t& n_targets() const {return header->n_targets;}
+
+  int32_t& ignore_sam_err() {return header->ignore_sam_err;}
+  const int32_t& ignore_sam_err() const {return header->ignore_sam_err;}
+
+  size_t& l_text() {return header->l_text;}
+  const size_t& l_text() const {return header->l_text;}
+
+  uint32_t ref_count() {return header->ref_count;}
+  const uint32_t ref_count() const {return header->ref_count;}
+
+  sam_hdr_t* get() {return header;}
+  const sam_hdr_t* get() const {return header;}
+
+  inline
+  std::string target_name(const int32_t tid) {
+    return header->target_name[tid];
+  }
+
+  sam_hdr_t* header;
+};
+
+static inline
+std::string
+to_string(const bam_header &hdr) {
+  return hdr.tostring();
+}
+
 class bam_rec {
 public:
   bam_rec() {
@@ -105,57 +163,6 @@ operator<<(T &out, const bam_rec &br) {
 }
 
 
-// Todo: there seems to be memory leak after copy constructor
-class bam_header {
-public:
-
-  bam_header() {
-    header = sam_hdr_init();
-  }
-
-  bam_header(const bam_header& hdr) {
-    // header = sam_hdr_init();
-    header = hdr.header;
-    header->ref_count++; // = hdr.header;
-  }
-
-  ~bam_header() {
-    if (header != NULL)
-      sam_hdr_destroy(header);
-  }
-
-  // not sure if this will remain, but I don't think it can hurt
-  explicit bam_header(const sam_hdr_t *hdr) {
-    header = sam_hdr_dup(hdr);
-  }
-
-  std::string tostring() const {
-    return std::string(sam_hdr_str(header));
-  }
-
-  int32_t& n_targets() {return header->n_targets;}
-  const int32_t& n_targets() const {return header->n_targets;}
-
-  int32_t& ignore_sam_err() {return header->ignore_sam_err;}
-  const int32_t& ignore_sam_err() const {return header->ignore_sam_err;}
-
-  size_t& l_text() {return header->l_text;}
-  const size_t& l_text() const {return header->l_text;}
-
-  uint32_t ref_count() {return header->ref_count;}
-  const uint32_t ref_count() const {return header->ref_count;}
-
-  sam_hdr_t* get() {return header;}
-  const sam_hdr_t* get() const {return header;}
-
-  sam_hdr_t* header;
-};
-
-static inline
-std::string
-to_string(const bam_header &hdr) {
-  return hdr.tostring();
-}
 
 
 class bam_infile {
