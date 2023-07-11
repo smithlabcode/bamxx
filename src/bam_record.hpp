@@ -1,3 +1,6 @@
+#ifndef BAM_RECORD_HPP 
+#define BAM_RECORD_HPP
+
 #include <string>
 #include <htslib/sam.h>
 
@@ -148,7 +151,7 @@ public:
   sam_hdr_t* header;
 };
 
-
+static inline
 std::string
 to_string(const bam_header &hdr) {
   return hdr.tostring();
@@ -207,7 +210,7 @@ public:
   int error_code; // ADS: need to define this better
 };
 
-
+static inline
 bam_infile &
 operator>>(bam_infile &in, bam_rec &br) {
   return in.get_bam_rec(br);
@@ -268,7 +271,8 @@ public:
 };
 
 
-template <class T> T &
+template <class T> 
+static inline T &
 operator<<(T &out, const bam_header &hdr) {
   out << hdr.tostring(); // there can be an issue returning this
                          // directly; for example if the `class T`
@@ -276,8 +280,10 @@ operator<<(T &out, const bam_header &hdr) {
   return out;
 }
 
-
+static inline
 bam_outfile &
 operator<<(bam_outfile &out, const bam_rec &br) {
   return out.put_bam_rec(br);
 }
+
+#endif
