@@ -6,11 +6,43 @@
 
 #include <iostream>
 #include <cassert>
+#include <vector>
 
+const std::vector<std::string> byte2str = {
+  "", "A", "C", "NN", "G", "NN", "NN", "NN",
+  "T", "NN", "NN", "NN", "NN", "NN", "NN", "N",
+  "A", "AA", "AC", "NN", "AG", "NN", "NN", "NN",
+  "AT", "NN", "NN", "NN", "NN", "NN", "NN", "AN",
+  "C", "CA", "CC", "NN", "CG", "NN", "NN", "NN",
+  "CT", "NN", "NN", "NN", "NN", "NN", "NN", "CN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "G", "GA", "GC", "NN", "GG", "NN", "NN", "NN",
+  "GT", "NN", "NN", "NN", "NN", "NN", "NN", "GN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "T", "TA", "TC", "NN", "TG", "NN", "NN", "NN",
+  "TT", "NN", "NN", "NN", "NN", "NN", "NN", "TN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "N", "NA", "NC", "NN", "NG", "NN", "NN", "NN",
+  "NT", "NN", "NN", "NN", "NN", "NN", "NN", "NN"
+};
 
-using std::string;
-using std::cout;
-using std::endl;
 
 
 // Todo: there seems to be memory leak after copy constructor
@@ -152,6 +184,17 @@ public:
   bam1_t* get() {return record;}
   const bam1_t* get() const {return record;}
 
+  inline const uint32_t*
+  cigar() const {
+    return reinterpret_cast<const uint32_t*>(data() + l_qname());
+  }
+
+  inline const uint8_t*
+  seq() const {
+    return data() + (n_cigar()<<2) + l_qname();
+  }
+
+   
 
   bam1_t* record;
 };
@@ -246,7 +289,7 @@ public:
     if (!bh.header)
       error_code = -1;
     if (!error_code) {
-      cout << bh.header->ref_count << endl;
+      std::cout << bh.header->ref_count << std::endl;
       file->bam_header = bh.header;
       // using same "sam_hdr_t" so increase the ref_count
       file->bam_header->ref_count++;
@@ -261,11 +304,11 @@ public:
     // ADS: here we can probably assume this bam_file's `file` has
     // htsFile::format == htsFormatCategory::sequence_data
     if (error_code) {
-      cout << error_code << endl;
+      std::cout << error_code << std::endl;
       return *this;
     }
     assert(file->bam_header != NULL);
-    cout << br.tostring() << endl;
+    std::cout << br.tostring() << std::endl;
     int tmp = sam_write1(file, file->bam_header, br.record);
     if (tmp < 0)
       error_code = tmp;

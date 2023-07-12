@@ -16,9 +16,13 @@ using std::endl;
 using std::vector;
 
 
-inline
-void write_cigar(std::stringstream &ss, const bam_rec& br) {
-  uint32_t* cigar = bam_get_cigar(br.get());
+
+
+
+
+inline void 
+write_cigar(std::stringstream &ss, const bam_rec& br) {
+  const uint32_t* cigar = br.cigar();
   for (size_t i = 0; i < br.n_cigar(); i++) {
     ss << bam_cigar_oplen(*cigar) << bam_cigar_opchr(*cigar);
     cigar++;
@@ -28,9 +32,9 @@ void write_cigar(std::stringstream &ss, const bam_rec& br) {
 
 inline 
 void write_seq(std::stringstream &ss, const bam_rec& br) {
-  uint8_t* seq = bam_get_seq(br.get());
-  for (auto i = 0; i < br.l_qseq(); i++) {
-    ss << seq_nt16_str[bam_seqi(seq, i)];
+  const uint8_t* seq = br.seq();
+  for (auto i = 0; i < (br.l_qseq()+1)/2; i++) {
+    ss << byte2str[seq[i]];
   }
   ss << '\t';
 }
@@ -53,10 +57,10 @@ void write_aux(std::stringstream &ss, const bam_rec& br) {
   const uint8_t* end = br.data() + br.l_data();
   while (end - aux >= 4) {
     kputc_('\t', &str);
-    aux = const_cast<uint8_t*>
+    aux = (uint8_t*) // Not sure how else to do it.
             (sam_format_aux1(aux, aux[2], aux+3, end, &str)); 
   }
-  kputsn("", 1, &str); 
+  kputsn("", 0, &str); 
   ss << str.s;
   free(str.s);
 }
