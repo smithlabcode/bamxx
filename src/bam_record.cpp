@@ -15,7 +15,35 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+static inline int str_resize(kstring_t *str, size_t size) {
+	if (str->m < size) {
+		char *tmp;
+		size = (size > (SIZE_MAX>>2)) ? size : size + (size >> 1);
+		tmp = (char*)realloc(str->s, size);
+		if (!tmp) return -1;
+		str->s = tmp;
+		str->m = size;
+	}
+	return 0;
+}
 
+
+static inline int putsn(const char *p, size_t l, kstring_t *s) {
+	size_t new_sz = s->l + l + 2;
+	if (new_sz <= s->l || str_resize(s, new_sz) < 0)
+    return EOF;
+	memcpy(s->s + s->l, p, l);
+	s->l += l;
+	s->s[s->l] = 0;
+	return l;
+}
+
+
+static inline int putc(int c, kstring_t *s) {
+  if (str_resize(s, s->l + 1) < 0) return EOF;
+  s->s[s->l++] = c;
+  return 1;
+}
 
 inline size_t
 cigar_oplen(const uint32_t c) {return c >> cigar_shift;}
@@ -31,7 +59,7 @@ cigar_opchr(const uint32_t c) {
 
 inline void 
 write_cigar(std::stringstream &ss, const bam_rec& br) {
-  const uint32_t* cigar = br.cigar();
+  const uint32_t* cigar = br.get_cigar();
   for (size_t i = 0; i < br.n_cigar(); i++) {
     ss << cigar_oplen(*cigar) << cigar_opchr(*cigar);
     cigar++;
@@ -41,7 +69,7 @@ write_cigar(std::stringstream &ss, const bam_rec& br) {
 
 inline 
 void write_seq(std::stringstream &ss, const bam_rec& br) {
-  const uint8_t* seq = br.seq();
+  const uint8_t* seq = br.get_seq();
   for (auto i = 0; i < (br.l_qseq()+1)/2; i++) {
     ss << byte2str[seq[i]];
   }
@@ -52,7 +80,7 @@ inline
 void write_qual(std::stringstream &ss, const bam_rec& br) {
   if (br.qual() == 0xff) ss << "*";
   else {
-    uint8_t* qual_seq = bam_get_qual(br.get());
+    const uint8_t* qual_seq = br.get_qual();
     for (auto i = 0; i < br.l_qseq(); i++) {
       ss << static_cast<char>(qual_seq[i]);
     }
@@ -62,14 +90,14 @@ void write_qual(std::stringstream &ss, const bam_rec& br) {
 inline 
 void write_aux(std::stringstream &ss, const bam_rec& br) {
   kstring_t str = {0,0, NULL};
-  uint8_t* aux = bam_get_aux(br.get()); 
+  const uint8_t* aux = br.get_aux(); 
   const uint8_t* end = br.data() + br.l_data();
   while (end - aux >= 4) {
-    kputc_('\t', &str);
+    putc('\t', &str);
     aux = (uint8_t*) // Not sure how else to do it.
             (sam_format_aux1(aux, aux[2], aux+3, end, &str)); 
   }
-  kputsn("", 0, &str); 
+  putsn("", 0, &str); 
   ss << str.s;
   free(str.s);
 }

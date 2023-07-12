@@ -13,6 +13,7 @@ const uint32_t cigar_mask = 0xf;
 const std::string cigar_str = "MIDNSHP=XB??????";
 
 
+
 const std::vector<std::string> byte2str = {
   "", "A", "C", "NN", "G", "NN", "NN", "NN",
   "T", "NN", "NN", "NN", "NN", "NN", "NN", "N",
@@ -190,14 +191,22 @@ public:
   const bam1_t* get() const {return record;}
 
   inline const uint32_t*
-  cigar() const {
+  get_cigar() const {
     return reinterpret_cast<const uint32_t*>(data() + l_qname());
   }
 
   inline const uint8_t*
-  seq() const {
+  get_seq() const {
     return data() + (n_cigar()<<2) + l_qname();
   }
+
+  inline const uint8_t*
+  get_qual() const {
+    return (data() + (n_cigar()<<2) + l_qname() + ((l_qseq() + 1)>>1));
+  }
+
+  inline const uint8_t*
+  get_aux() const {return get_qual() + l_qseq();}
 
    
 
