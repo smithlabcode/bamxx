@@ -17,14 +17,23 @@ using std::vector;
 
 
 
+inline size_t
+cigar_oplen(const uint32_t c) {return c >> cigar_shift;}
 
+inline uint8_t
+cigar_op(const uint32_t c) {return c & cigar_mask;} 
+
+inline char
+cigar_opchr(const uint32_t c) {
+  return cigar_str[cigar_op(c)];
+}
 
 
 inline void 
 write_cigar(std::stringstream &ss, const bam_rec& br) {
   const uint32_t* cigar = br.cigar();
   for (size_t i = 0; i < br.n_cigar(); i++) {
-    ss << bam_cigar_oplen(*cigar) << bam_cigar_opchr(*cigar);
+    ss << cigar_oplen(*cigar) << cigar_opchr(*cigar);
     cigar++;
   }
   ss << '\t';

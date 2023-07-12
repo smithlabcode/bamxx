@@ -8,6 +8,11 @@
 #include <cassert>
 #include <vector>
 
+const uint8_t cigar_shift = 4;
+const uint32_t cigar_mask = 0xf;
+const std::string cigar_str = "MIDNSHP=XB??????";
+
+
 const std::vector<std::string> byte2str = {
   "", "A", "C", "NN", "G", "NN", "NN", "NN",
   "T", "NN", "NN", "NN", "NN", "NN", "NN", "N",
