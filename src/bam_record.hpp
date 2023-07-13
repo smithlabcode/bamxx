@@ -214,23 +214,12 @@ public:
   qname() const {return bam_get_qname(record);}
   
   inline size_t
-  qlen_from_cigar() {return bam_cigar2qlen(n_cigar(), get_cigar());}
+  qlen_from_cigar() const {return bam_cigar2qlen(n_cigar(), get_cigar());}
 
   bam1_t* record;
 
 };
 
-
-inline bool
-precedes_by_start(const bam_rec &a, const bam_rec &b) {
-  return a.tid() == b.tid() && a.pos() < b.pos();
-}
-
-
-inline bool
-equivalent_chrom_and_start(const bam1_t *a, const bam1_t *b) {
-  return a->core.pos == b->core.pos && a->core.tid == b->core.tid;
-}
 
 
 template <class T> T &
@@ -240,6 +229,7 @@ operator<<(T &out, const bam_rec &br) {
                         // returns a bool from its operator::<<
   return out;
 }
+
 
 
 

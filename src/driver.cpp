@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "bam_record.hpp"
+#include "uniq.hpp"
 
 
 using std::string;
@@ -31,6 +32,7 @@ int main(const int argc, const char *argv[]) {
   }
 
   bam_rec aln, aln2;
+
   
 
   bam_header bh(bf.file->bam_header);
@@ -44,16 +46,35 @@ int main(const int argc, const char *argv[]) {
   if (precedes) cout << "a precedes" << endl;
   else cout << "b precedes " << endl;
 
+  if (equivalent_chrom_and_start(aln, aln2)) cout << "equivalent" << endl;
+  else cout << "not equivalent" << endl;
+
+  rd_stats stats; 
+  rd_stats stats_out; 
+
 
   size_t count = 0;
   while (bf >> aln && count < 100) {
-    cout << aln.tostring() << endl;
+    stats.update(aln);
+    //cout << aln.tostring() << endl;
+    string aln_str = aln.tostring();
     size_t qlen = aln.qlen_from_cigar();
     qlen++;
     string qname = aln.qname();
-    bo << aln;
+    if (bo << aln) {
+      stats_out.update(aln);
+    }
     count += 1;
   }
+  size_t reads_duped = 3;
+  string statfile = "statfile.txt";
+
+  write_stats_output(stats, stats_out, reads_duped, statfile);
+
+
+
+
+
   cout << bf.error_code << endl
        << count << endl;
 }

@@ -106,7 +106,7 @@ void write_aux(std::stringstream &ss, const bam_rec& br) {
   free(str.s);
 }
 
-inline 
+static inline 
 void write_mtid(std::stringstream &ss, const bam_rec& br) {
   if (br.mtid() == -1) ss << "*\t";
   else ss << br.mtid() << "\t";
