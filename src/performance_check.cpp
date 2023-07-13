@@ -39,7 +39,7 @@ void test_bam1_t(const string& inputfile, const string &outfile) {
 
   while((err_code = sam_read1(bf, hdr, aln)) >= 0) {
     aln->core.pos += 123;
-    if(sam_write1(bo, bo->bam_header, aln)) {
+    if(sam_write1(bo, bo->bam_header, aln) < 0) {
       cerr << "Failed to write read" << endl;
       std::exit(1);
     }

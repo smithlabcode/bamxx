@@ -297,7 +297,7 @@ public:
     if (!bh.header)
       error_code = -1;
     if (!error_code) {
-      std::cout << bh.header->ref_count << std::endl;
+      //std::cout << bh.header->ref_count << std::endl;
       file->bam_header = bh.header;
       // using same "sam_hdr_t" so increase the ref_count
       file->bam_header->ref_count++;
@@ -312,7 +312,7 @@ public:
     // ADS: here we can probably assume this bam_file's `file` has
     // htsFile::format == htsFormatCategory::sequence_data
     if (error_code) {
-      std::cout << error_code << std::endl;
+      std::cout << "Error: " << error_code << std::endl;
       return *this;
     }
     assert(file->bam_header != NULL);
