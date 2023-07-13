@@ -26,15 +26,31 @@ int main(const int argc, const char *argv[]) {
   string outfile(argv[2]);
 
   bam_infile bf(inputfile);
-  bam_rec aln;
+  if (bf.is_bam_or_sam()) {
+    cout << "bam or sam" << endl;
+  }
+
+  bam_rec aln, aln2;
+  
 
   bam_header bh(bf.file->bam_header);
 
   bam_outfile bo(outfile, bh);
 
+  bf >> aln;
+  bf >> aln2;
+
+  bool precedes = precedes_by_start(aln, aln2);
+  if (precedes) cout << "a precedes" << endl;
+  else cout << "b precedes " << endl;
+
+
   size_t count = 0;
   while (bf >> aln && count < 100) {
-    cout << "main=" << aln.tostring() << endl;
+    //cout << "main=" << aln.tostring() << endl;
+    size_t qlen = aln.qlen_from_cigar();
+    qlen++;
+    string qname = aln.qname();
     bo << aln;
     count += 1;
   }

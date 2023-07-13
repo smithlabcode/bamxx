@@ -11,6 +11,9 @@
 const uint8_t cigar_shift = 4;
 const uint32_t cigar_mask = 0xf;
 const std::string cigar_str = "MIDNSHP=XB??????";
+const uint8_t sequence_data_enum = 1;
+const uint8_t sam_enum = 3;
+const uint8_t bam_enum = 4;
 
 
 
@@ -207,10 +210,21 @@ public:
   inline const uint8_t*
   get_aux() const {return get_qual() + l_qseq();}
 
-   
+  inline std::string
+  qname() const {return bam_get_qname(record);}
+  
+  inline size_t
+  qlen_from_cigar() {return bam_cigar2qlen(n_cigar(), get_cigar());}
 
   bam1_t* record;
+
 };
+
+
+static inline bool
+precedes_by_start(const bam_rec &a, const bam_rec &b) {
+  return a.tid() == b.tid() && a.pos() < b.pos();
+}
 
 
 template <class T> T &
@@ -235,12 +249,12 @@ public:
       hts_close(file);
   }
 
-
   bam_infile(const std::string &filename) {
     file = hts_open(filename.c_str(), "r");
     error_code = (file) ? 0 : -1;
     if (!error_code) {
       sam_hdr_t *hdr = bam_hdr_read(file->fp.bgzf);
+      fmt = hts_get_format(file);
       if (!hdr)
         error_code = -1;
       else {
@@ -272,7 +286,14 @@ public:
     return (error_code == 0);
   }
 
-  htsFile* file;  // ADS: probably needs a better name
+  inline bool
+  is_bam_or_sam() {
+    return fmt->category == sequence_data_enum && 
+      (fmt->format == bam_enum || fmt->format == sam_enum);
+  }
+
+  htsFile *file;  // ADS: probably needs a better name
+  const htsFormat *fmt;
   int error_code; // ADS: need to define this better
 };
 
