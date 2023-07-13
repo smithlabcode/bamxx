@@ -21,9 +21,9 @@ using std::vector;
 
 static inline int str_resize(kstring_t *str, size_t size) {
 	if (str->m < size) {
-		char *tmp;
-		size = (size > (SIZE_MAX>>2)) ? size : size + (size >> 1);
-		tmp = (char*)realloc(str->s, size);
+		//size = (size > (SIZE_MAX>>2)) ? size : size + (size >> 1);
+    size = (size > (SIZE_MAX / 4)) ? size : size * 3;
+		char *tmp = static_cast<char *>(realloc(str->s, size));
 		if (!tmp) return -1;
 		str->s = tmp;
 		str->m = size;
@@ -98,7 +98,7 @@ void write_aux(std::stringstream &ss, const bam_rec& br) {
   const uint8_t* end = br.data() + br.l_data();
   while (end - aux >= 4) {
     putc('\t', &str);
-    aux = (uint8_t*) // Not sure how else to do it.
+    aux = static_cast<const uint8_t *> // Not sure how else to do it.
             (sam_format_aux1(aux, aux[2], aux+3, end, &str)); 
   }
   putsn("", 0, &str); 

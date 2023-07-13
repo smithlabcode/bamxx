@@ -221,9 +221,15 @@ public:
 };
 
 
-static inline bool
+inline bool
 precedes_by_start(const bam_rec &a, const bam_rec &b) {
   return a.tid() == b.tid() && a.pos() < b.pos();
+}
+
+
+inline bool
+equivalent_chrom_and_start(const bam1_t *a, const bam1_t *b) {
+  return a->core.pos == b->core.pos && a->core.tid == b->core.tid;
 }
 
 
@@ -354,7 +360,7 @@ public:
 
 
 template <class T> 
-static inline T &
+inline T &
 operator<<(T &out, const bam_header &hdr) {
   out << hdr.tostring(); // there can be an issue returning this
                          // directly; for example if the `class T`
@@ -362,13 +368,13 @@ operator<<(T &out, const bam_header &hdr) {
   return out;
 }
 
-static inline
+inline
 bam_infile &
 operator>>(bam_infile &in, bam_rec &br) {
   return in.get_bam_rec(br);
 }
 
-static inline
+inline
 bam_outfile &
 operator<<(bam_outfile &out, const bam_rec &br) {
   return out.put_bam_rec(br);

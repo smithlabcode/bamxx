@@ -47,7 +47,7 @@ int main(const int argc, const char *argv[]) {
 
   size_t count = 0;
   while (bf >> aln && count < 100) {
-    //cout << "main=" << aln.tostring() << endl;
+    cout << aln.tostring() << endl;
     size_t qlen = aln.qlen_from_cigar();
     qlen++;
     string qname = aln.qname();
