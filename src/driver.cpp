@@ -17,6 +17,7 @@ using std::string;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::cerr;
 
 
 
@@ -70,6 +71,19 @@ int main(const int argc, const char *argv[]) {
   string statfile = "statfile.txt";
 
   write_stats_output(stats, stats_out, reads_duped, statfile);
+
+
+  bool verbose = true;
+  size_t n_threads = 1;
+  string cmd = "some command";
+  string uniq_infile = "test_data/reads.fmt.bam";
+  string statsfile = "stats.txt";
+  string histfile = "hist.txt";
+  bool bam_format = true;
+  string uniq_outfile = "uniq.out.sam";
+
+  //uniq(verbose, n_threads, cmd, uniq_infile, statsfile, histfile, 
+      //bam_format, uniq_outfile);
 
 
 

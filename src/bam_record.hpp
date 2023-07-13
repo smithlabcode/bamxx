@@ -14,6 +14,8 @@ const std::string cigar_str = "MIDNSHP=XB??????";
 const uint8_t sequence_data_enum = 1;
 const uint8_t sam_enum = 3;
 const uint8_t bam_enum = 4;
+const uint16_t freverse = 16;
+
 
 
 
@@ -62,7 +64,6 @@ public:
   }
 
   bam_header(const bam_header& hdr) {
-    // header = sam_hdr_init();
     header = hdr.header;
     header->ref_count++; // = hdr.header;
   }
@@ -76,6 +77,15 @@ public:
   explicit bam_header(const sam_hdr_t *hdr) {
     header = sam_hdr_dup(hdr);
   }
+
+  inline void
+  copy(bam_header &hdr) {
+    if (header == NULL) header = sam_hdr_dup(hdr.header);
+    else {
+      std::cerr << "header not empty, failed to copy" << std::endl;
+    }
+  }
+
 
   std::string tostring() const {
     return std::string(sam_hdr_str(header));
@@ -96,10 +106,13 @@ public:
   sam_hdr_t* get() {return header;}
   const sam_hdr_t* get() const {return header;}
 
-  inline
+  inline 
   std::string target_name(const int32_t tid) {
     return header->target_name[tid];
   }
+
+  int add_lines(const std::string &type, ...);
+
 
   sam_hdr_t* header;
 };
@@ -216,6 +229,12 @@ public:
   inline size_t
   qlen_from_cigar() const {return bam_cigar2qlen(n_cigar(), get_cigar());}
 
+  inline hts_pos_t
+  endpos() const {return bam_endpos(record);}
+
+  inline bool
+  is_rev() const {return (flag() & freverse) != 0;}
+
   bam1_t* record;
 
 };
@@ -285,7 +304,7 @@ public:
   inline bool
   is_bam_or_sam() {
     return fmt->category == sequence_data_enum && 
-      (fmt->format == bam_enum || fmt->format == sam_enum);
+    (fmt->format == bam_enum || fmt->format == sam_enum);
   }
 
   htsFile *file;  // ADS: probably needs a better name
@@ -309,6 +328,7 @@ public:
               bam_header &bh) {
     // ADS: ??? "bh" non-const as its sam_hdr_t* will need to be
     // attached here and might be reference counted?
+    // MN : Need to accomodate for binary output
     file = hts_open(filename.c_str(), "w");
     error_code = (file) ? 0 : -1;
     if (!bh.header)

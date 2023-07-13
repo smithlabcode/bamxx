@@ -1,7 +1,7 @@
 
 // from HTSlib
 #include <htslib/sam.h>
-
+#include <htslib/thread_pool.h>
 
 #include "uniq.hpp"
 
@@ -11,6 +11,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 using std::string;
 using std::cout;
@@ -18,6 +19,7 @@ using std::endl;
 using std::vector;
 using std::runtime_error;
 using std::ofstream;
+using std::sort;
 
 
 void
@@ -59,20 +61,145 @@ write_hist_output(const vector<size_t> &hist, const string &histfile) {
  * end and strand, and is a contiguous subset of the "outer" buffer
  * that shares the same end and strand.
  */
-//static void
-//process_inner_buffer(const vector<bam_rec>::const_iterator it,
-                     //const vector<bam_rec>::const_iterator jt,
-                     //bam_header &hdr, bam_outfile &out,
-                     //rd_stats &rs_out,
-                     //size_t &reads_duped,
-                     //vector<size_t> &hist) {
-  //const size_t n_reads = std::distance(it, jt);
-  //const size_t selected = rand() % n_reads;
-  //if (sam_write1(out, hdr, *(it + selected)) < 0)
-    //throw runtime_error("failed writing bam record");
-  //if (hist.size() <= n_reads)
-    //hist.resize(n_reads + 1);
-  //hist[n_reads]++;
-  //rs_out.update(*(it + selected));
-  //reads_duped += (n_reads > 1);
-//}
+void
+process_inner_buffer(const vector<bam_rec>::const_iterator it,
+                     const vector<bam_rec>::const_iterator jt,
+                     bam_header &hdr, bam_outfile &bo,
+                     rd_stats &rs_out,
+                     size_t &reads_duped,
+                     vector<size_t> &hist) {
+  const size_t n_reads = std::distance(it, jt);
+  const size_t selected = rand() % n_reads;
+  
+  if (!bo.put_bam_rec(*(it + selected)))
+    throw runtime_error("failed writing bam record");
+  if (hist.size() <= n_reads)
+    hist.resize(n_reads + 1);
+  hist[n_reads]++;
+  rs_out.update(*(it + selected));
+  reads_duped += (n_reads > 1);
+}
+
+/* The buffer corresponds to reads sharing the same mapping chromosome
+   and start position. These are gathered and then processed together. */
+void
+process_buffer(rd_stats &rs_out, size_t &reads_duped, 
+               vector<size_t> &hist, vector<bam_rec> &buffer, 
+               bam_header &hdr, bam_outfile &out) {
+  sort(begin(buffer), end(buffer), precedes_by_end_and_strand);
+  auto it(begin(buffer));
+  auto jt = it + 1;
+  for (; jt != end(buffer); ++jt)
+    if (!equivalent_end_and_strand(*it, *jt)) {
+      process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
+      it = jt;
+    }
+  process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
+
+  //// free the bam1_t pointers before clearing the buffer
+  //for (size_t i = 0; i < buffer.size(); ++i)
+    //if (buffer[i] != 0) {
+      //bam_destroy1(buffer[i]);
+      //buffer[i] = 0;
+    //}
+  buffer.clear();
+}
+
+
+
+void
+uniq(const bool VERBOSE, const size_t n_threads,
+     const string &cmd, const string &infile,
+     const string &statfile, const string &histfile,
+     const bool bam_format, const string &outfile) {
+
+  bam_infile hts(infile);
+  if (!hts || errno)
+    throw runtime_error("bad htslib file: " + infile);
+
+  htsThreadPool the_thread_pool{hts_tpool_init(n_threads), 0};
+  if (hts_set_thread_pool(hts.file, &the_thread_pool) < 0)
+    throw runtime_error("error setting threads");
+
+  if (!hts.is_bam_or_sam())
+    throw runtime_error("bad file format: " + infile);
+
+  //MN: need to add ways to check if this is successful
+  //    also the above still has raw pointer
+  //if (!hdr)
+    //throw runtime_error("failed to read header: " + infile);
+  bam_header hdr(hts.file->bam_header);
+
+  // open the output file
+  //bam_outfile out = hts_open(outfile.c_str(), bam_format ? "wb" : "w");
+  bam_header hdr_out;
+  hdr_out.copy(hdr);
+
+  // MN: Currently only outputs to sam file
+  bam_outfile out(outfile, hdr_out);
+  if (out.error_code) {
+    throw runtime_error("failed to open out file");
+  }
+
+  if (hts_set_thread_pool(out.file, &the_thread_pool) < 0)
+    throw runtime_error("error setting threads");
+
+  //MN: need to replace with wrapper. 
+  //    need to replace VERSION_PLACEHOLDER
+  if (sam_hdr_add_line(hdr_out.header, "PG", "ID",
+                       "DNMTOOLS", "VN", "VERSION_PLACEHOLDER", 
+                       "CL", cmd.c_str(), NULL))
+    throw runtime_error("failed to format header");
+
+  // try to load the first read
+  bam_rec aln; 
+  
+  if (!(hts >> aln))
+    throw runtime_error("failed parsing read from input file");
+
+  // values to tabulate stats; no real cost
+  rd_stats rs_in, rs_out;
+  size_t reads_duped = 0;
+  vector<size_t> hist;
+
+  rs_in.update(aln); // update for the input we just got
+
+  vector<bam_rec> buffer; // select output from this buffer
+  buffer.push_back(aln);
+  
+
+  // to check that reads are sorted properly
+  vector<bool> chroms_seen(hdr.n_targets(), false);
+  int32_t cur_chrom = aln.tid();
+
+  while ((hts >> aln)) {
+    rs_in.update(aln);
+
+    // below works because buffer reset at every new chrom
+    if (precedes_by_start(aln, buffer[0]))
+      throw runtime_error("not sorted: " + buffer[0].qname() + 
+          " " + aln.qname());
+
+    const int32_t chrom = aln.tid();
+    if (chrom != cur_chrom) {
+      if (chroms_seen[chrom]) throw runtime_error("input not sorted");
+      chroms_seen[chrom] = true;
+      cur_chrom = chrom;
+    }
+
+    if (!equivalent_chrom_and_start(buffer[0], aln))
+      process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
+    buffer.push_back(aln);
+  }
+  process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
+
+  ////// remember to turn off the lights
+  ////bam_hdr_destroy(hdr);
+  ////hts_close(out);
+  ////hts_close(hts);
+  ////hts_tpool_destroy(the_thread_pool.pool);
+
+  // write any additional output requested
+  write_stats_output(rs_in, rs_out, reads_duped, statfile);
+  write_hist_output(hist, histfile);
+}
