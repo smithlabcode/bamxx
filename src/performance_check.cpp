@@ -20,6 +20,7 @@ using std::cerr;
 
 
 void test_bam1_t(const string& inputfile, const string &outfile) {
+  cout << "Running with bam1_t" << endl;
   htsFile* bf = hts_open(inputfile.c_str(), "r");
   sam_hdr_t *hdr = bam_hdr_read(bf->fp.bgzf);
   bf->bam_header = hdr;
@@ -52,6 +53,7 @@ void test_bam1_t(const string& inputfile, const string &outfile) {
 }
 
 void test_bam_rec(const string& inputfile, const string &outfile) {
+  cout << "Running with bam_rec" << endl;
   bam_infile bf(inputfile);
   bam_header bh(bf.file->bam_header);
   bam_outfile bo(outfile, bh);
