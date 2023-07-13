@@ -51,7 +51,6 @@ const std::vector<std::string> byte2str = {
 
 
 
-// Todo: there seems to be memory leak after copy constructor
 class bam_header {
 public:
 
@@ -277,11 +276,6 @@ public:
   int error_code; // ADS: need to define this better
 };
 
-static inline
-bam_infile &
-operator>>(bam_infile &in, bam_rec &br) {
-  return in.get_bam_rec(br);
-}
 
 
 class bam_outfile {
@@ -322,7 +316,7 @@ public:
       return *this;
     }
     assert(file->bam_header != NULL);
-    std::cout << br.tostring() << std::endl;
+    //std::cout << br.tostring() << std::endl;
     int tmp = sam_write1(file, file->bam_header, br.record);
     if (tmp < 0)
       error_code = tmp;
@@ -345,6 +339,12 @@ operator<<(T &out, const bam_header &hdr) {
                          // directly; for example if the `class T`
                          // returns a bool from its operator::<<
   return out;
+}
+
+static inline
+bam_infile &
+operator>>(bam_infile &in, bam_rec &br) {
+  return in.get_bam_rec(br);
 }
 
 static inline
