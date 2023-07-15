@@ -1,13 +1,16 @@
-#ifndef BAM_RECORD_HPP 
+#ifndef BAM_RECORD_HPP
 #define BAM_RECORD_HPP
 
-#include <string>
 #include <htslib/sam.h>
+#include <string>
 
-#include <iostream>
 #include <cassert>
+#include <iostream>
 #include <vector>
 
+// ADS: the point of having this source file and corresponding classes
+// is so that these implementation details are hidden from the user
+// and therefore should not be exported.
 const uint8_t cigar_shift = 4;
 const uint32_t cigar_mask = 0xf;
 const std::string cigar_str = "MIDNSHP=XB??????";
@@ -18,67 +21,54 @@ const uint16_t freverse = 16;
 
 extern size_t bam_rec_count;
 
-
+// ADS: this should be hidden from the user, and in the `.cpp`
+// file. The only time this is needed is during I/O, and those
+// functions do not need to be in the header.
 const std::vector<std::string> byte2str = {
-  "", "A", "C", "NN", "G", "NN", "NN", "NN",
-  "T", "NN", "NN", "NN", "NN", "NN", "NN", "N",
-  "A", "AA", "AC", "NN", "AG", "NN", "NN", "NN",
-  "AT", "NN", "NN", "NN", "NN", "NN", "NN", "AN",
-  "C", "CA", "CC", "NN", "CG", "NN", "NN", "NN",
-  "CT", "NN", "NN", "NN", "NN", "NN", "NN", "CN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "G", "GA", "GC", "NN", "GG", "NN", "NN", "NN",
-  "GT", "NN", "NN", "NN", "NN", "NN", "NN", "GN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "T", "TA", "TC", "NN", "TG", "NN", "NN", "NN",
-  "TT", "NN", "NN", "NN", "NN", "NN", "NN", "TN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "N", "NA", "NC", "NN", "NG", "NN", "NN", "NN",
-  "NT", "NN", "NN", "NN", "NN", "NN", "NN", "NN"
-};
-
-
+  "",   "A",  "C",  "NN", "G",  "NN", "NN", "NN", "T",  "NN", "NN", "NN", "NN",
+  "NN", "NN", "N",  "A",  "AA", "AC", "NN", "AG", "NN", "NN", "NN", "AT", "NN",
+  "NN", "NN", "NN", "NN", "NN", "AN", "C",  "CA", "CC", "NN", "CG", "NN", "NN",
+  "NN", "CT", "NN", "NN", "NN", "NN", "NN", "NN", "CN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "G",
+  "GA", "GC", "NN", "GG", "NN", "NN", "NN", "GT", "NN", "NN", "NN", "NN", "NN",
+  "NN", "GN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "T",  "TA",
+  "TC", "NN", "TG", "NN", "NN", "NN", "TT", "NN", "NN", "NN", "NN", "NN", "NN",
+  "TN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "N",  "NA", "NC", "NN", "NG", "NN", "NN",
+  "NN", "NT", "NN", "NN", "NN", "NN", "NN", "NN", "NN"};
 
 class bam_header {
 public:
+  bam_header() { header = sam_hdr_init(); }
 
-  bam_header() {
-    header = sam_hdr_init();
-  }
-
-  bam_header(const bam_header& hdr, const bool shallow) {
+  // ADS: the reference counting issue needs to be addressed. My
+  // thinking is we should not allow any reference count to exceed `0`
+  // and we should do a full deep copy every time there is any copy of
+  // the header. There is no situation where we would have more than,
+  // say, 128 headers. And that only happens if we do something like
+  // make temporary files correspoding to threads or something.
+  bam_header(const bam_header &hdr, const bool shallow) {
     if (shallow) {
       header = hdr.header;
       header->ref_count++; // = hdr.header;
     }
-    else {
-      header = sam_hdr_dup(hdr.header);
-    }
+    else { header = sam_hdr_dup(hdr.header); }
     error_code = (header == NULL) ? -1 : 0;
   }
 
-  bam_header(const bam_header& hdr) : bam_header(hdr, false) {}
+  bam_header(const bam_header &hdr): bam_header(hdr, false) {}
 
   ~bam_header() {
-    if (header != NULL)
-      sam_hdr_destroy(header);
+    if (header != NULL) sam_hdr_destroy(header);
   }
 
   // not sure if this will remain, but I don't think it can hurt
@@ -87,78 +77,120 @@ public:
       header = hdr;
       header->ref_count++; // = hdr.header;
     }
-    else {
-      header = sam_hdr_dup(hdr);
-    }
+    else { header = sam_hdr_dup(hdr); }
     error_code = (header == NULL) ? -1 : 0;
   }
 
-  inline void
+  // ADS: any function defined in the class definition is
+  // automatically inlined
+  /* inline */ void
   copy(bam_header &hdr) {
     header = sam_hdr_dup(hdr.header);
   }
 
-  std::string tostring() const {
+  std::string
+  tostring() const {
     return std::string(sam_hdr_str(header));
   }
 
-  int32_t& n_targets() {return header->n_targets;}
-  const int32_t& n_targets() const {return header->n_targets;}
+  int32_t &
+  n_targets() {
+    return header->n_targets;
+  }
 
-  int32_t& ignore_sam_err() {return header->ignore_sam_err;}
-  const int32_t& ignore_sam_err() const {return header->ignore_sam_err;}
+  const int32_t &
+  n_targets() const {
+    return header->n_targets;
+  }
 
-  size_t& l_text() {return header->l_text;}
-  const size_t& l_text() const {return header->l_text;}
+  // ADS: what is the reason for having this exported in the interface
+  // of this class? Should a user of this class ever need to be aware
+  // of `ignore_sam_err`? In what way does the rest of our interface
+  // even allow it to be used?
+  int32_t &
+  ignore_sam_err() {
+    return header->ignore_sam_err;
+  }
 
-  uint32_t ref_count() {return header->ref_count;}
-  const uint32_t ref_count() const {return header->ref_count;}
+  const int32_t &
+  ignore_sam_err() const {
+    return header->ignore_sam_err;
+  }
 
-  sam_hdr_t* get() {return header;}
-  const sam_hdr_t* get() const {return header;}
+  size_t &
+  l_text() {
+    return header->l_text;
+  }
 
-  inline 
-  std::string target_name(const int32_t tid) {
+  const size_t &
+  l_text() const {
+    return header->l_text;
+  }
+
+  uint32_t
+  ref_count() {
+    return header->ref_count;
+  }
+
+  const uint32_t
+  ref_count() const {
+    return header->ref_count;
+  }
+
+  sam_hdr_t *
+  get() {
+    return header;
+  }
+
+  const sam_hdr_t *
+  get() const {
+    return header;
+  }
+
+  inline std::string
+  target_name(const int32_t tid) {
     return header->target_name[tid];
   }
 
-  int add_lines(const std::string &type, ...);
+  // ADS: below is not good C++. Check out:
+  // https://www.oreilly.com/library/view/c-coding-standards/0321113586/ch99.html
+  int
+  add_lines(const std::string &type, ...);
 
-
-  sam_hdr_t* header;
+  sam_hdr_t *header;
+  // ADS: Not sure we need this as an instance variable. Isn't an
+  // error something we always manage locally? Do we ever want a
+  // header object to persist in an erroneous state?
   int error_code;
 };
 
-static inline
-std::string
+static inline std::string
 to_string(const bam_header &hdr) {
   return hdr.tostring();
 }
 
 class bam_rec {
 public:
-  bam_rec() {
-    count = ++bam_rec_count; 
-    std::cout << "default const: " << count << std::endl;
-    record = bam_init1();
-  }
+  bam_rec() { record = bam_init1(); }
 
-  bam_rec(const bam_rec& aln) {
-    count = ++bam_rec_count; 
-    std::cout << "copy const: " << count << std::endl;
+  bam_rec(const bam_rec &aln) {
     record = bam_init1();
     record = bam_copy1(record, aln.record);
   }
 
+  bam_rec &
+  operator=(bam_rec rhs) {
+    std::swap(record, rhs.record);
+    return *this;
+  }
+
   explicit bam_rec(const bam1_t *aln) {
-    //count = ++bam_rec_count; 
-    //std::cout << "raw const: " << count << std::endl;
     record = bam_init1();
     record = bam_copy1(record, aln);
   }
 
   static void
-  steal(bam1_t* &aln, bam_rec &br) {
+  steal(bam1_t *&aln, bam_rec &br) {
     bam_destroy1(br.record); // ADS: not a great way to do this!
     br.record = aln;
     aln = NULL;
@@ -168,102 +200,230 @@ public:
     // ADS: is it possible for a bam_rec to have `record == NULL`? Can
     // that state be reached?
     if (record->data != NULL) {
-      std::cout << "destroying: " << count << std::endl;
       bam_destroy1(record);
+      record->data = NULL; // ADS: in theory this should not be needed
     }
   }
 
-  std::string tostring() const;
+  std::string
+  tostring() const;
 
-  hts_pos_t& pos() {return record->core.pos;}
-  const hts_pos_t& pos() const {return record->core.pos;}
+  hts_pos_t &
+  pos() {
+    return record->core.pos;
+  }
 
-  int32_t& tid() {return record->core.tid;}
-  const int32_t& tid() const {return record->core.tid;}
+  const hts_pos_t &
+  pos() const {
+    return record->core.pos;
+  }
 
-  uint16_t& bin() {return record->core.bin;}
-  const uint16_t& bin() const {return record->core.bin;}
+  int32_t &
+  tid() {
+    return record->core.tid;
+  }
 
-  uint8_t& qual() {return record->core.qual;}
-  const uint8_t& qual() const {return record->core.qual;}
+  const int32_t &
+  tid() const {
+    return record->core.tid;
+  }
 
-  uint8_t& l_extranul() {return record->core.l_extranul;}
-  const uint8_t& l_extranul() const {return record->core.l_extranul;}
+  uint16_t &
+  bin() {
+    return record->core.bin;
+  }
 
-  uint16_t& flag() {return record->core.flag;}
-  const uint16_t& flag() const {return record->core.flag;}
+  const uint16_t &
+  bin() const {
+    return record->core.bin;
+  }
 
-  uint16_t& l_qname() {return record->core.l_qname;}
-  const uint16_t& l_qname() const {return record->core.l_qname;}
+  uint8_t &
+  qual() {
+    return record->core.qual;
+  }
 
-  uint32_t& n_cigar() {return record->core.n_cigar;}
-  const uint32_t& n_cigar() const {return record->core.n_cigar;}
+  const uint8_t &
+  qual() const {
+    return record->core.qual;
+  }
 
-  int32_t& l_qseq() {return record->core.l_qseq;}
-  const int32_t& l_qseq() const {return record->core.l_qseq;}
+  // ADS: part of the purpose of this API is to prevent users from
+  // having to even know that `l_extranul` exists.
+  uint8_t &
+  l_extranul() {
+    return record->core.l_extranul;
+  }
 
-  int32_t& mtid() {return record->core.mtid;}
-  const int32_t& mtid() const {return record->core.mtid;}
+  const uint8_t &
+  l_extranul() const {
+    return record->core.l_extranul;
+  }
 
-  hts_pos_t& mpos() {return record->core.mpos;}
-  const hts_pos_t& mpos() const {return record->core.mpos;}
+  uint16_t &
+  flag() {
+    return record->core.flag;
+  }
 
-  hts_pos_t& isize() {return record->core.isize;}
-  const hts_pos_t& isize() const {return record->core.isize;}
+  const uint16_t &
+  flag() const {
+    return record->core.flag;
+  }
 
-  uint64_t& id() {return record->id;}
-  const uint64_t& id() const {return record->id;}
+  uint16_t &
+  l_qname() {
+    return record->core.l_qname;
+  }
 
-  int& l_data() {return record->l_data;}
-  const int& l_data() const {return record->l_data;}
+  const uint16_t &
+  l_qname() const {
+    return record->core.l_qname;
+  }
 
-  uint8_t* data() {return record->data;}
-  const uint8_t* data() const {return record->data;}
+  uint32_t &
+  n_cigar() {
+    return record->core.n_cigar;
+  }
 
-  uint32_t& m_data() {return record->m_data;}
-  const uint32_t& m_data() const {return record->m_data;}
+  const uint32_t &
+  n_cigar() const {
+    return record->core.n_cigar;
+  }
 
-  bam1_t* get() {return record;}
-  const bam1_t* get() const {return record;}
+  int32_t &
+  l_qseq() {
+    return record->core.l_qseq;
+  }
 
-  inline const uint32_t*
+  const int32_t &
+  l_qseq() const {
+    return record->core.l_qseq;
+  }
+
+  int32_t &
+  mtid() {
+    return record->core.mtid;
+  }
+
+  const int32_t &
+  mtid() const {
+    return record->core.mtid;
+  }
+
+  hts_pos_t &
+  mpos() {
+    return record->core.mpos;
+  }
+
+  const hts_pos_t &
+  mpos() const {
+    return record->core.mpos;
+  }
+
+  hts_pos_t &
+  isize() {
+    return record->core.isize;
+  }
+
+  const hts_pos_t &
+  isize() const {
+    return record->core.isize;
+  }
+
+  uint64_t &
+  id() {
+    return record->id;
+  }
+
+  const uint64_t &
+  id() const {
+    return record->id;
+  }
+
+  int &
+  l_data() {
+    return record->l_data;
+  }
+
+  const int &
+  l_data() const {
+    return record->l_data;
+  }
+
+  uint8_t *
+  data() {
+    return record->data;
+  }
+
+  const uint8_t *
+  data() const {
+    return record->data;
+  }
+
+  uint32_t &
+  m_data() {
+    return record->m_data;
+  }
+
+  const uint32_t &
+  m_data() const {
+    return record->m_data;
+  }
+
+  bam1_t *
+  get() {
+    return record;
+  }
+
+  const bam1_t *
+  get() const {
+    return record;
+  }
+
+  inline const uint32_t *
   get_cigar() const {
-    return reinterpret_cast<const uint32_t*>(data() + l_qname());
+    return reinterpret_cast<const uint32_t *>(data() + l_qname());
   }
 
-  inline const uint8_t*
+  inline const uint8_t *
   get_seq() const {
-    return data() + (n_cigar()<<2) + l_qname();
+    return data() + (n_cigar() << 2) + l_qname();
   }
 
-  inline const uint8_t*
+  inline const uint8_t *
   get_qual() const {
-    return (data() + (n_cigar()<<2) + l_qname() + ((l_qseq() + 1)>>1));
+    return (data() + (n_cigar() << 2) + l_qname() + ((l_qseq() + 1) >> 1));
   }
 
-  inline const uint8_t*
-  get_aux() const {return get_qual() + l_qseq();}
+  inline const uint8_t *
+  get_aux() const {
+    return get_qual() + l_qseq();
+  }
 
   inline std::string
-  qname() const {return bam_get_qname(record);}
-  
+  qname() const {
+    return bam_get_qname(record);
+  }
+
   inline size_t
-  qlen_from_cigar() const {return bam_cigar2qlen(n_cigar(), get_cigar());}
+  qlen_from_cigar() const {
+    return bam_cigar2qlen(n_cigar(), get_cigar());
+  }
 
   inline hts_pos_t
-  endpos() const {return bam_endpos(record);}
+  endpos() const {
+    return bam_endpos(record);
+  }
 
   inline bool
-  is_rev() const {return (flag() & freverse) != 0;}
+  is_rev() const {
+    return (flag() & freverse) != 0;
+  }
 
-  bam1_t* record;
-  size_t count;
-
+  bam1_t *record;
 };
 
-
-
-template <class T> T &
+template<class T> T &
 operator<<(T &out, const bam_rec &br) {
   out << br.tostring(); // there can be an issue returning this
                         // directly; for example if the `class T`
@@ -271,19 +431,15 @@ operator<<(T &out, const bam_rec &br) {
   return out;
 }
 
-
-
-
-
 class bam_infile {
 public:
-  bam_infile() : file(NULL), error_code(0) {}
+  bam_infile(): file(NULL), error_code(0) {}
+
   ~bam_infile() {
     // ADS: condition below ensures the hdr will be destroyed when the
     // file is closed.
     assert(file->bam_header->ref_count == 0);
-    if (file != NULL)
-      hts_close(file);
+    if (file != NULL) hts_close(file);
   }
 
   bam_infile(const std::string &filename) {
@@ -300,7 +456,6 @@ public:
       }
     }
   }
-
 
   bam_infile &
   get_bam_rec(bam_rec &br) {
@@ -319,53 +474,48 @@ public:
     return *this;
   }
 
-  operator bool() const {
-    return (error_code == 0);
-  }
+  operator bool() const { return (error_code == 0); }
 
   inline bool
   is_bam_or_sam() {
-    return fmt->category == sequence_data_enum && 
-    (fmt->format == bam_enum || fmt->format == sam_enum);
+    return fmt->category == sequence_data_enum &&
+           (fmt->format == bam_enum || fmt->format == sam_enum);
   }
 
-  htsFile *file;  // ADS: probably needs a better name
+  htsFile *file; // ADS: probably needs a better name
   const htsFormat *fmt;
   int error_code; // ADS: need to define this better
 };
 
-
-
 class bam_outfile {
 public:
-  bam_outfile() : file(NULL), error_code(0) {}
+  bam_outfile(): file(NULL), error_code(0) {}
+
   ~bam_outfile() {
     // ADS: condition below ensures the hdr will be destroyed when the
     // file is closed.
     // assert(file->bam_header->ref_count == 0);
-    if (file != NULL)
-      hts_close(file);
+    if (file != NULL) hts_close(file);
   }
-  bam_outfile(const std::string &filename,
-              bam_header &bh) {
+
+  bam_outfile(const std::string &filename, bam_header &bh) {
     // ADS: ??? "bh" non-const as its sam_hdr_t* will need to be
     // attached here and might be reference counted?
     // MN : Need to accomodate for binary output
     file = hts_open(filename.c_str(), "w");
     error_code = (file) ? 0 : -1;
-    if (!bh.header)
-      error_code = -1;
+    if (!bh.header) error_code = -1;
     if (!error_code) {
-      //std::cout << bh.header->ref_count << std::endl;
+      // std::cout << bh.header->ref_count << std::endl;
       file->bam_header = bh.header;
       // using same "sam_hdr_t" so increase the ref_count
       file->bam_header->ref_count++;
       // ADS: do we care about this: add_pg_line??
       int tmp = sam_hdr_write(file, file->bam_header);
-      if (tmp < 0)
-        error_code = tmp;
+      if (tmp < 0) error_code = tmp;
     }
   }
+
   bam_outfile &
   put_bam_rec(const bam_rec &br) {
     // ADS: here we can probably assume this bam_file's `file` has
@@ -375,24 +525,19 @@ public:
       return *this;
     }
     assert(file->bam_header != NULL);
-    //std::cout << br.tostring() << std::endl;
+    // std::cout << br.tostring() << std::endl;
     int tmp = sam_write1(file, file->bam_header, br.record);
-    if (tmp < 0)
-      error_code = tmp;
+    if (tmp < 0) error_code = tmp;
     return *this;
   }
 
-  operator bool() const {
-    return (error_code == 0);
-  }
+  operator bool() const { return (error_code == 0); }
 
-  htsFile* file;  // ADS: probably needs a better name
+  htsFile *file;  // ADS: probably needs a better name
   int error_code; // ADS: need to define this better
 };
 
-
-template <class T> 
-inline T &
+template<class T> inline T &
 operator<<(T &out, const bam_header &hdr) {
   out << hdr.tostring(); // there can be an issue returning this
                          // directly; for example if the `class T`
@@ -400,14 +545,12 @@ operator<<(T &out, const bam_header &hdr) {
   return out;
 }
 
-inline
-bam_infile &
+inline bam_infile &
 operator>>(bam_infile &in, bam_rec &br) {
   return in.get_bam_rec(br);
 }
 
-inline
-bam_outfile &
+inline bam_outfile &
 operator<<(bam_outfile &out, const bam_rec &br) {
   return out.put_bam_rec(br);
 }
