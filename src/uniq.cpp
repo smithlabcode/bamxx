@@ -87,22 +87,15 @@ void
 process_buffer(rd_stats &rs_out, size_t &reads_duped, 
                vector<size_t> &hist, vector<bam_rec> &buffer, 
                bam_header &hdr, bam_outfile &out) {
-  //sort(begin(buffer), end(buffer), precedes_by_end_and_strand);
-  //auto it(begin(buffer));
-  //auto jt = it + 1;
-  //for (; jt != end(buffer); ++jt)
-    //if (!equivalent_end_and_strand(*it, *jt)) {
-      //process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
-      //it = jt;
-    //}
-  //process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
-
-  ////// free the bam1_t pointers before clearing the buffer
-  ////for (size_t i = 0; i < buffer.size(); ++i)
-    ////if (buffer[i] != 0) {
-      ////bam_destroy1(buffer[i]);
-      ////buffer[i] = 0;
-    ////}
+  sort(begin(buffer), end(buffer), precedes_by_end_and_strand);
+  auto it(begin(buffer));
+  auto jt = it + 1;
+  for (; jt != end(buffer); ++jt)
+    if (!equivalent_end_and_strand(*it, *jt)) {
+      process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
+      it = jt;
+    }
+  process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
   buffer.clear();
 }
 
@@ -135,8 +128,8 @@ uniq(const bool VERBOSE, const size_t n_threads,
   //bam_outfile out = hts_open(outfile.c_str(), bam_format ? "wb" : "w");
   bam_header hdr_out(hdr, false); // deep copy
 
-  //MN: need to replace with wrapper. 
-  //    need to replace VERSION_PLACEHOLDER
+  //MN: need to replace with wrapper function  
+  //    need to replace VERSION_PLACEHOLDER with VERSION
   if (sam_hdr_add_line(hdr_out.header, "PG", "ID",
                        "DNMTOOLS", "VN", "VERSION_PLACEHOLDER", 
                        "CL", cmd.c_str(), NULL))
@@ -198,15 +191,9 @@ uniq(const bool VERBOSE, const size_t n_threads,
       process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
     buffer.push_back(aln);
   }
-  //process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
+  process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
 
-  //////// remember to turn off the lights
-  //////bam_hdr_destroy(hdr);
-  //////hts_close(out);
-  //////hts_close(hts);
-  //hts_tpool_destroy(the_thread_pool.pool);
-
-  //// write any additional output requested
-  //write_stats_output(rs_in, rs_out, reads_duped, statfile);
-  //write_hist_output(hist, histfile);
+  // write any additional output requested
+  write_stats_output(rs_in, rs_out, reads_duped, statfile);
+  write_hist_output(hist, histfile);
 }

@@ -26,30 +26,30 @@ size_t bam_rec_count = 0;
 
 int main(const int argc, const char *argv[]) {
 
-  string inputfile(argv[1]);
-  string outfile(argv[2]);
+  //string inputfile(argv[1]);
+  //string outfile(argv[2]);
 
-  bam_infile bf(inputfile);
-  if (bf.is_bam_or_sam()) {
-    cout << "bam or sam" << endl;
-  }
+  //bam_infile bf(inputfile);
+  //if (bf.is_bam_or_sam()) {
+    //cout << "bam or sam" << endl;
+  //}
 
-  bam_header bh(bf.file->bam_header, false);
-  bam_outfile bo(outfile, bh);
+  //bam_header bh(bf.file->bam_header, false);
+  //bam_outfile bo(outfile, bh);
 
 
-  size_t N = 5;
-  size_t count = 0;
+  //size_t N = 5;
+  //size_t count = 0;
 
-  bam_rec aln;
-  vector<bam_rec> bam_vec;
-  while ((bf >> aln) && count < N) {
-    bam_vec.push_back(aln); 
-    count++;
-  }
-  cout << "start sorting" << endl;
-  sort(begin(bam_vec), end(bam_vec), precedes_by_end_and_strand);
-  cout << "end sorting" << endl;
+  //bam_rec aln;
+  //vector<bam_rec> bam_vec;
+  //while ((bf >> aln) && count < N) {
+    //bam_vec.push_back(aln); 
+    //count++;
+  //}
+  //cout << "start sorting" << endl;
+  //sort(begin(bam_vec), end(bam_vec), precedes_by_end_and_strand);
+  //cout << "end sorting" << endl;
 
   //bool precedes = precedes_by_start(aln, aln2);
   //if (precedes) cout << "a precedes" << endl;
@@ -80,18 +80,18 @@ int main(const int argc, const char *argv[]) {
 
   //write_stats_output(stats, stats_out, reads_duped, statfile);
 
+  string uniq_infile(argv[1]);
+  string uniq_outfile(argv[2]);
 
-  //bool verbose = true;
-  //size_t n_threads = 1;
-  //string cmd = "some command";
-  //string uniq_infile = "test_data/reads.fmt.bam.srt";
-  //string statsfile = "stats.txt";
-  //string histfile = "hist.txt";
-  //bool bam_format = true;
-  //string uniq_outfile = "uniq.out.sam";
+  bool verbose = true;
+  size_t n_threads = 1;
+  string cmd = "some command";
+  string statsfile = "stats.txt";
+  string histfile = "hist.txt";
+  bool bam_format = true;
 
-  //uniq(verbose, n_threads, cmd, uniq_infile, statsfile, histfile, 
-      //bam_format, uniq_outfile);
+  uniq(verbose, n_threads, cmd, uniq_infile, statsfile, histfile, 
+      bam_format, uniq_outfile);
 
   //cout << bf.error_code << endl
        //<< count << endl;

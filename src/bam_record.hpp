@@ -81,9 +81,7 @@ public:
     error_code = (header == NULL) ? -1 : 0;
   }
 
-  // ADS: any function defined in the class definition is
-  // automatically inlined
-  /* inline */ void
+  void
   copy(bam_header &hdr) {
     header = sam_hdr_dup(hdr.header);
   }
@@ -199,9 +197,9 @@ public:
   ~bam_rec() {
     // ADS: is it possible for a bam_rec to have `record == NULL`? Can
     // that state be reached?
-    if (record->data != NULL) {
+    if (record != NULL) {
       bam_destroy1(record);
-      record->data = NULL; // ADS: in theory this should not be needed
+      record = NULL; // ADS: in theory this should not be needed
     }
   }
 
