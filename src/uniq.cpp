@@ -20,6 +20,7 @@ using std::vector;
 using std::runtime_error;
 using std::ofstream;
 using std::sort;
+using std::to_string;
 
 
 void
@@ -86,22 +87,22 @@ void
 process_buffer(rd_stats &rs_out, size_t &reads_duped, 
                vector<size_t> &hist, vector<bam_rec> &buffer, 
                bam_header &hdr, bam_outfile &out) {
-  sort(begin(buffer), end(buffer), precedes_by_end_and_strand);
-  auto it(begin(buffer));
-  auto jt = it + 1;
-  for (; jt != end(buffer); ++jt)
-    if (!equivalent_end_and_strand(*it, *jt)) {
-      process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
-      it = jt;
-    }
-  process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
-
-  //// free the bam1_t pointers before clearing the buffer
-  //for (size_t i = 0; i < buffer.size(); ++i)
-    //if (buffer[i] != 0) {
-      //bam_destroy1(buffer[i]);
-      //buffer[i] = 0;
+  //sort(begin(buffer), end(buffer), precedes_by_end_and_strand);
+  //auto it(begin(buffer));
+  //auto jt = it + 1;
+  //for (; jt != end(buffer); ++jt)
+    //if (!equivalent_end_and_strand(*it, *jt)) {
+      //process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
+      //it = jt;
     //}
+  //process_inner_buffer(it, jt, hdr, out, rs_out, reads_duped, hist);
+
+  ////// free the bam1_t pointers before clearing the buffer
+  ////for (size_t i = 0; i < buffer.size(); ++i)
+    ////if (buffer[i] != 0) {
+      ////bam_destroy1(buffer[i]);
+      ////buffer[i] = 0;
+    ////}
   buffer.clear();
 }
 
@@ -117,9 +118,10 @@ uniq(const bool VERBOSE, const size_t n_threads,
   if (!hts || errno)
     throw runtime_error("bad htslib file: " + infile);
 
-  htsThreadPool the_thread_pool{hts_tpool_init(n_threads), 0};
-  if (hts_set_thread_pool(hts.file, &the_thread_pool) < 0)
-    throw runtime_error("error setting threads");
+  //// MN:  needs to be uncommented later.
+  //htsThreadPool the_thread_pool{hts_tpool_init(n_threads), 0};
+  //if (hts_set_thread_pool(hts.file, &the_thread_pool) < 0)
+    //throw runtime_error("error setting threads");
 
   if (!hts.is_bam_or_sam())
     throw runtime_error("bad file format: " + infile);
@@ -128,21 +130,10 @@ uniq(const bool VERBOSE, const size_t n_threads,
   //    also the above still has raw pointer
   //if (!hdr)
     //throw runtime_error("failed to read header: " + infile);
-  bam_header hdr(hts.file->bam_header);
+  bam_header hdr(hts.file->bam_header, true); // shallow copy
 
-  // open the output file
   //bam_outfile out = hts_open(outfile.c_str(), bam_format ? "wb" : "w");
-  bam_header hdr_out;
-  hdr_out.copy(hdr);
-
-  // MN: Currently only outputs to sam file
-  bam_outfile out(outfile, hdr_out);
-  if (out.error_code) {
-    throw runtime_error("failed to open out file");
-  }
-
-  if (hts_set_thread_pool(out.file, &the_thread_pool) < 0)
-    throw runtime_error("error setting threads");
+  bam_header hdr_out(hdr, false); // deep copy
 
   //MN: need to replace with wrapper. 
   //    need to replace VERSION_PLACEHOLDER
@@ -150,6 +141,17 @@ uniq(const bool VERBOSE, const size_t n_threads,
                        "DNMTOOLS", "VN", "VERSION_PLACEHOLDER", 
                        "CL", cmd.c_str(), NULL))
     throw runtime_error("failed to format header");
+
+  // MN: Currently only outputs to sam file
+  bam_outfile out(outfile, hdr_out);
+  if (out.error_code) {
+    throw runtime_error("failed to open out file");
+  }
+
+  //// MN:  needs to be uncommented later.
+  //if (hts_set_thread_pool(out.file, &the_thread_pool) < 0)
+    //throw runtime_error("error setting threads");
+
 
   // try to load the first read
   bam_rec aln; 
@@ -169,6 +171,7 @@ uniq(const bool VERBOSE, const size_t n_threads,
   
 
   // to check that reads are sorted properly
+  // Needs to be modified later
   vector<bool> chroms_seen(hdr.n_targets(), false);
   int32_t cur_chrom = aln.tid();
 
@@ -177,8 +180,12 @@ uniq(const bool VERBOSE, const size_t n_threads,
 
     // below works because buffer reset at every new chrom
     if (precedes_by_start(aln, buffer[0]))
-      throw runtime_error("not sorted: " + buffer[0].qname() + 
-          " " + aln.qname());
+      throw runtime_error("not sorted:\n" +
+          buffer[0].qname() + "\t" +
+          to_string(buffer[0].tid()) + "\t" + 
+          to_string(buffer[0].pos()) + "\n" +
+          aln.qname() + "\t" +
+          to_string(aln.tid()) + "\t" + to_string(aln.pos()));
 
     const int32_t chrom = aln.tid();
     if (chrom != cur_chrom) {
@@ -191,15 +198,15 @@ uniq(const bool VERBOSE, const size_t n_threads,
       process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
     buffer.push_back(aln);
   }
-  process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
+  //process_buffer(rs_out, reads_duped, hist, buffer, hdr, out);
 
-  ////// remember to turn off the lights
-  ////bam_hdr_destroy(hdr);
-  ////hts_close(out);
-  ////hts_close(hts);
-  ////hts_tpool_destroy(the_thread_pool.pool);
+  //////// remember to turn off the lights
+  //////bam_hdr_destroy(hdr);
+  //////hts_close(out);
+  //////hts_close(hts);
+  //hts_tpool_destroy(the_thread_pool.pool);
 
-  // write any additional output requested
-  write_stats_output(rs_in, rs_out, reads_duped, statfile);
-  write_hist_output(hist, histfile);
+  //// write any additional output requested
+  //write_stats_output(rs_in, rs_out, reads_duped, statfile);
+  //write_hist_output(hist, histfile);
 }

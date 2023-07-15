@@ -16,7 +16,7 @@ const uint8_t sam_enum = 3;
 const uint8_t bam_enum = 4;
 const uint16_t freverse = 16;
 
-
+extern size_t bam_rec_count;
 
 
 const std::vector<std::string> byte2str = {
@@ -63,10 +63,18 @@ public:
     header = sam_hdr_init();
   }
 
-  bam_header(const bam_header& hdr) {
-    header = hdr.header;
-    header->ref_count++; // = hdr.header;
+  bam_header(const bam_header& hdr, const bool shallow) {
+    if (shallow) {
+      header = hdr.header;
+      header->ref_count++; // = hdr.header;
+    }
+    else {
+      header = sam_hdr_dup(hdr.header);
+    }
+    error_code = (header == NULL) ? -1 : 0;
   }
+
+  bam_header(const bam_header& hdr) : bam_header(hdr, false) {}
 
   ~bam_header() {
     if (header != NULL)
@@ -74,18 +82,21 @@ public:
   }
 
   // not sure if this will remain, but I don't think it can hurt
-  explicit bam_header(const sam_hdr_t *hdr) {
-    header = sam_hdr_dup(hdr);
+  explicit bam_header(sam_hdr_t *const hdr, const bool shallow) {
+    if (shallow) {
+      header = hdr;
+      header->ref_count++; // = hdr.header;
+    }
+    else {
+      header = sam_hdr_dup(hdr);
+    }
+    error_code = (header == NULL) ? -1 : 0;
   }
 
   inline void
   copy(bam_header &hdr) {
-    if (header == NULL) header = sam_hdr_dup(hdr.header);
-    else {
-      std::cerr << "header not empty, failed to copy" << std::endl;
-    }
+    header = sam_hdr_dup(hdr.header);
   }
-
 
   std::string tostring() const {
     return std::string(sam_hdr_str(header));
@@ -115,6 +126,7 @@ public:
 
 
   sam_hdr_t* header;
+  int error_code;
 };
 
 static inline
@@ -126,15 +138,21 @@ to_string(const bam_header &hdr) {
 class bam_rec {
 public:
   bam_rec() {
+    count = ++bam_rec_count; 
+    std::cout << "default const: " << count << std::endl;
     record = bam_init1();
   }
 
   bam_rec(const bam_rec& aln) {
+    count = ++bam_rec_count; 
+    std::cout << "copy const: " << count << std::endl;
     record = bam_init1();
     record = bam_copy1(record, aln.record);
   }
 
   explicit bam_rec(const bam1_t *aln) {
+    //count = ++bam_rec_count; 
+    //std::cout << "raw const: " << count << std::endl;
     record = bam_init1();
     record = bam_copy1(record, aln);
   }
@@ -149,7 +167,10 @@ public:
   ~bam_rec() {
     // ADS: is it possible for a bam_rec to have `record == NULL`? Can
     // that state be reached?
-    if (record != NULL) bam_destroy1(record);
+    if (record->data != NULL) {
+      std::cout << "destroying: " << count << std::endl;
+      bam_destroy1(record);
+    }
   }
 
   std::string tostring() const;
@@ -236,6 +257,7 @@ public:
   is_rev() const {return (flag() & freverse) != 0;}
 
   bam1_t* record;
+  size_t count;
 
 };
 

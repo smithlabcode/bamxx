@@ -19,7 +19,7 @@ precedes_by_start(const bam_rec &a, const bam_rec &b) {
 
 inline bool
 precedes_by_end_and_strand(const bam_rec &a, const bam_rec &b) {
-  const size_t end_a = a.endpos(), end_b = b.endpos();
+  const hts_pos_t end_a = a.endpos(), end_b = b.endpos();
   return (end_a < end_b || (end_a == end_b && a.is_rev() < b.is_rev()));
 }
 
