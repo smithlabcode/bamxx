@@ -134,10 +134,11 @@ bam_rec::tostring() const {
 // MN: Not working as I want it to.
 //     Will work in the future
 int
-bam_header::add_lines(const string &type, ...) {
-  va_list args;
-  va_start(args, type);
-  int err_num = sam_hdr_add_line(header, type.c_str(), args);
-  va_end(args);
-  return err_num;
+bam_header::add_line(const string &type, const vector<string> &args) {
+  //va_list args;
+  //va_start(args, type);
+  //int err_num = sam_hdr_add_line(header, type.c_str(), args);
+  //va_end(args);
+  //return err_num;
+  return 0;
 }

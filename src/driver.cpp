@@ -26,6 +26,7 @@ size_t bam_rec_count = 0;
 
 int main(const int argc, const char *argv[]) {
 
+  srand(408);
   //string inputfile(argv[1]);
   //string outfile(argv[2]);
 

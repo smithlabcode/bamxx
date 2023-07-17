@@ -2,6 +2,8 @@
 #define BAM_RECORD_HPP
 
 #include <htslib/sam.h>
+#include <htslib/thread_pool.h>
+
 #include <string>
 
 #include <cassert>
@@ -153,7 +155,7 @@ public:
   // ADS: below is not good C++. Check out:
   // https://www.oreilly.com/library/view/c-coding-standards/0321113586/ch99.html
   int
-  add_lines(const std::string &type, ...);
+  add_line(const std::string &type, const std::vector<std::string> &args);
 
   sam_hdr_t *header;
   // ADS: Not sure we need this as an instance variable. Isn't an
@@ -552,5 +554,32 @@ inline bam_outfile &
 operator<<(bam_outfile &out, const bam_rec &br) {
   return out.put_bam_rec(br);
 }
+
+
+
+class bam_tpool{
+public:
+  bam_tpool(const int n, const int qsize) {
+    tpool.pool = hts_tpool_init(n);
+    tpool.qsize = qsize;
+  }
+
+  ~bam_tpool() {
+    hts_tpool_destroy(tpool.pool);
+  }
+
+  int set(const bam_infile &bi) {
+    return(hts_set_thread_pool(bi.file, &tpool));
+  }
+
+  int set(const bam_outfile &bo) {
+    return(hts_set_thread_pool(bo.file, &tpool));
+  }
+
+  htsThreadPool tpool;
+};
+
+
+
 
 #endif

@@ -111,16 +111,13 @@ uniq(const bool VERBOSE, const size_t n_threads,
   if (!hts || errno)
     throw runtime_error("bad htslib file: " + infile);
 
-  //// MN:  needs to be uncommented later.
-  //htsThreadPool the_thread_pool{hts_tpool_init(n_threads), 0};
-  //if (hts_set_thread_pool(hts.file, &the_thread_pool) < 0)
-    //throw runtime_error("error setting threads");
+  bam_tpool thread_pool(n_threads, 0);
+  if (thread_pool.set(hts) < 0)
+    throw runtime_error("error setting threads");
 
   if (!hts.is_bam_or_sam())
     throw runtime_error("bad file format: " + infile);
 
-  //MN: need to add ways to check if this is successful
-  //    also the above still has raw pointer
   //if (!hdr)
     //throw runtime_error("failed to read header: " + infile);
   bam_header hdr(hts.file->bam_header, true); // shallow copy
@@ -141,44 +138,32 @@ uniq(const bool VERBOSE, const size_t n_threads,
     throw runtime_error("failed to open out file");
   }
 
-  //// MN:  needs to be uncommented later.
-  //if (hts_set_thread_pool(out.file, &the_thread_pool) < 0)
-    //throw runtime_error("error setting threads");
-
-
-  // try to load the first read
-  bam_rec aln; 
-  
-  if (!(hts >> aln))
-    throw runtime_error("failed parsing read from input file");
+  if (thread_pool.set(out) < 0)
+    throw runtime_error("error setting threads");
 
   // values to tabulate stats; no real cost
   rd_stats rs_in, rs_out;
   size_t reads_duped = 0;
   vector<size_t> hist;
 
+  bam_rec aln; 
+  if (!(hts >> aln))
+    throw runtime_error("failed parsing read from input file");
   rs_in.update(aln); // update for the input we just got
 
   vector<bam_rec> buffer; // select output from this buffer
   buffer.push_back(aln);
-  
 
-  // to check that reads are sorted properly
-  // Needs to be modified later
   vector<bool> chroms_seen(hdr.n_targets(), false);
   int32_t cur_chrom = aln.tid();
 
-  while ((hts >> aln)) {
+  while (hts >> aln) {
     rs_in.update(aln);
 
     // below works because buffer reset at every new chrom
     if (precedes_by_start(aln, buffer[0]))
-      throw runtime_error("not sorted:\n" +
-          buffer[0].qname() + "\t" +
-          to_string(buffer[0].tid()) + "\t" + 
-          to_string(buffer[0].pos()) + "\n" +
-          aln.qname() + "\t" +
-          to_string(aln.tid()) + "\t" + to_string(aln.pos()));
+      throw runtime_error("not sorted: " + buffer[0].qname() + 
+          " " + aln.qname());
 
     const int32_t chrom = aln.tid();
     if (chrom != cur_chrom) {
