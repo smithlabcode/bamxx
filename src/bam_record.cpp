@@ -54,6 +54,8 @@ cigar_op(const uint32_t c) {
   return c & cigar_mask;
 }
 
+static const char cigar_str[] = "MIDNSHP=XB??????";
+
 inline char
 cigar_opchr(const uint32_t c) {
   return cigar_str[cigar_op(c)];
@@ -68,6 +70,31 @@ write_cigar(std::stringstream &ss, const bam_rec &br) {
   }
   ss << '\t';
 }
+
+
+static const char *const byte2str[] = {
+  "",   "A",  "C",  "NN", "G",  "NN", "NN", "NN", "T",  "NN", "NN", "NN", "NN",
+  "NN", "NN", "N",  "A",  "AA", "AC", "NN", "AG", "NN", "NN", "NN", "AT", "NN",
+  "NN", "NN", "NN", "NN", "NN", "AN", "C",  "CA", "CC", "NN", "CG", "NN", "NN",
+  "NN", "CT", "NN", "NN", "NN", "NN", "NN", "NN", "CN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "G",
+  "GA", "GC", "NN", "GG", "NN", "NN", "NN", "GT", "NN", "NN", "NN", "NN", "NN",
+  "NN", "GN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "T",  "TA",
+  "TC", "NN", "TG", "NN", "NN", "NN", "TT", "NN", "NN", "NN", "NN", "NN", "NN",
+  "TN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
+  "NN", "NN", "NN", "NN", "NN", "NN", "N",  "NA", "NC", "NN", "NG", "NN", "NN",
+  "NN", "NT", "NN", "NN", "NN", "NN", "NN", "NN", "NN"
+};
+
 
 inline void
 write_seq(std::stringstream &ss, const bam_rec &br) {

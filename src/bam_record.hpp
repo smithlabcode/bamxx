@@ -15,38 +15,12 @@
 // and therefore should not be exported.
 const uint8_t cigar_shift = 4;
 const uint32_t cigar_mask = 0xf;
-const std::string cigar_str = "MIDNSHP=XB??????";
 const uint8_t sequence_data_enum = 1;
 const uint8_t sam_enum = 3;
 const uint8_t bam_enum = 4;
 const uint16_t freverse = 16;
 
 extern size_t bam_rec_count;
-
-// ADS: this should be hidden from the user, and in the `.cpp`
-// file. The only time this is needed is during I/O, and those
-// functions do not need to be in the header.
-const std::vector<std::string> byte2str = {
-  "",   "A",  "C",  "NN", "G",  "NN", "NN", "NN", "T",  "NN", "NN", "NN", "NN",
-  "NN", "NN", "N",  "A",  "AA", "AC", "NN", "AG", "NN", "NN", "NN", "AT", "NN",
-  "NN", "NN", "NN", "NN", "NN", "AN", "C",  "CA", "CC", "NN", "CG", "NN", "NN",
-  "NN", "CT", "NN", "NN", "NN", "NN", "NN", "NN", "CN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "G",
-  "GA", "GC", "NN", "GG", "NN", "NN", "NN", "GT", "NN", "NN", "NN", "NN", "NN",
-  "NN", "GN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "T",  "TA",
-  "TC", "NN", "TG", "NN", "NN", "NN", "TT", "NN", "NN", "NN", "NN", "NN", "NN",
-  "TN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN",
-  "NN", "NN", "NN", "NN", "NN", "NN", "N",  "NA", "NC", "NN", "NG", "NN", "NN",
-  "NN", "NT", "NN", "NN", "NN", "NN", "NN", "NN", "NN"};
 
 class bam_header {
 public:
@@ -64,13 +38,13 @@ public:
       header->ref_count++; // = hdr.header;
     }
     else { header = sam_hdr_dup(hdr.header); }
-    error_code = (header == NULL) ? -1 : 0;
+    error_code = (header == nullptr) ? -1 : 0;
   }
 
   bam_header(const bam_header &hdr): bam_header(hdr, false) {}
 
   ~bam_header() {
-    if (header != NULL) sam_hdr_destroy(header);
+    if (header != nullptr) sam_hdr_destroy(header);
   }
 
   // not sure if this will remain, but I don't think it can hurt
@@ -80,7 +54,7 @@ public:
       header->ref_count++; // = hdr.header;
     }
     else { header = sam_hdr_dup(hdr); }
-    error_code = (header == NULL) ? -1 : 0;
+    error_code = (header == nullptr) ? -1 : 0;
   }
 
   void
@@ -193,15 +167,15 @@ public:
   steal(bam1_t *&aln, bam_rec &br) {
     bam_destroy1(br.record); // ADS: not a great way to do this!
     br.record = aln;
-    aln = NULL;
+    aln = nullptr;
   }
 
   ~bam_rec() {
     // ADS: is it possible for a bam_rec to have `record == NULL`? Can
     // that state be reached?
-    if (record != NULL) {
+    if (record != nullptr) {
       bam_destroy1(record);
-      record = NULL; // ADS: in theory this should not be needed
+      record = nullptr; // ADS: in theory this should not be needed
     }
   }
 
@@ -433,13 +407,13 @@ operator<<(T &out, const bam_rec &br) {
 
 class bam_infile {
 public:
-  bam_infile(): file(NULL), error_code(0) {}
+  bam_infile(): file(nullptr), error_code(0) {}
 
   ~bam_infile() {
     // ADS: condition below ensures the hdr will be destroyed when the
     // file is closed.
     assert(file->bam_header->ref_count == 0);
-    if (file != NULL) hts_close(file);
+    if (file != nullptr) hts_close(file);
   }
 
   bam_infile(const std::string &filename) {
@@ -489,13 +463,13 @@ public:
 
 class bam_outfile {
 public:
-  bam_outfile(): file(NULL), error_code(0) {}
+  bam_outfile(): file(nullptr), error_code(0) {}
 
   ~bam_outfile() {
     // ADS: condition below ensures the hdr will be destroyed when the
     // file is closed.
     // assert(file->bam_header->ref_count == 0);
-    if (file != NULL) hts_close(file);
+    if (file != nullptr) hts_close(file);
   }
 
   bam_outfile(const std::string &filename, bam_header &bh) {
@@ -524,7 +498,7 @@ public:
       std::cout << "Error: " << error_code << std::endl;
       return *this;
     }
-    assert(file->bam_header != NULL);
+    assert(file->bam_header != nullptr);
     // std::cout << br.tostring() << std::endl;
     int tmp = sam_write1(file, file->bam_header, br.record);
     if (tmp < 0) error_code = tmp;
