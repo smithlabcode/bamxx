@@ -107,11 +107,13 @@ uniq(const bool VERBOSE, const size_t n_threads,
      const string &statfile, const string &histfile,
      const bool bam_format, const string &outfile) {
 
+  bam_tpool thread_pool(n_threads, 0); // Needs to come before infile
+                                       // and outfile
+
   bam_infile hts(infile);
   if (!hts || errno)
     throw runtime_error("bad htslib file: " + infile);
 
-  bam_tpool thread_pool(n_threads, 0);
   if (thread_pool.set(hts) < 0)
     throw runtime_error("error setting threads");
 
