@@ -32,28 +32,20 @@ public:
   // the header. There is no situation where we would have more than,
   // say, 128 headers. And that only happens if we do something like
   // make temporary files correspoding to threads or something.
-  bam_header(const bam_header &hdr, const bool shallow) {
-    if (shallow) {
-      header = hdr.header;
-      header->ref_count++; // = hdr.header;
-    }
-    else { header = sam_hdr_dup(hdr.header); }
+  // MN: I made everything deep copy.
+  bam_header(const bam_header &hdr) {
+    header = sam_hdr_dup(hdr.header);
     error_code = (header == nullptr) ? -1 : 0;
   }
 
-  bam_header(const bam_header &hdr): bam_header(hdr, false) {}
 
   ~bam_header() {
     if (header != nullptr) sam_hdr_destroy(header);
   }
 
   // not sure if this will remain, but I don't think it can hurt
-  explicit bam_header(sam_hdr_t *const hdr, const bool shallow) {
-    if (shallow) {
-      header = hdr;
-      header->ref_count++; // = hdr.header;
-    }
-    else { header = sam_hdr_dup(hdr); }
+  explicit bam_header(sam_hdr_t *const hdr) {
+    header = sam_hdr_dup(hdr);
     error_code = (header == nullptr) ? -1 : 0;
   }
 

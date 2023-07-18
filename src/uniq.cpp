@@ -120,12 +120,10 @@ uniq(const bool VERBOSE, const size_t n_threads,
   if (!hts.is_bam_or_sam())
     throw runtime_error("bad file format: " + infile);
 
-  //if (!hdr)
-    //throw runtime_error("failed to read header: " + infile);
-  bam_header hdr(hts.file->bam_header, true); // shallow copy
+  bam_header hdr(hts.file->bam_header); // shallow copy
 
   //bam_outfile out = hts_open(outfile.c_str(), bam_format ? "wb" : "w");
-  bam_header hdr_out(hdr, false); // deep copy
+  bam_header hdr_out(hdr); // deep copy
 
   //MN: need to replace with wrapper function  
   //    need to replace VERSION_PLACEHOLDER with VERSION
