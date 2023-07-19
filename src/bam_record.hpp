@@ -9,6 +9,7 @@
 #include <cassert>
 #include <iostream>
 #include <vector>
+#include <stdexcept>
 
 
 
@@ -337,14 +338,14 @@ public:
     file = hts_open(filename.c_str(), "r");
     error_code = (file) ? 0 : -1;
     if (!error_code) {
-      sam_hdr_t *hdr = bam_hdr_read(file->fp.bgzf);
+      file->bam_header = bam_hdr_read(file->fp.bgzf);
       fmt = hts_get_format(file);
-      if (!hdr)
-        error_code = -1;
-      else {
-        assert(hdr->ref_count == 0);
-        file->bam_header = hdr;
+      if (!file->bam_header) {
+        throw std::runtime_error("Null or invalid header.");
       }
+    }
+    else {
+      throw std::runtime_error("File could not be opened.");
     }
   }
 
