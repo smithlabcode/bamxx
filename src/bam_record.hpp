@@ -10,17 +10,6 @@
 #include <iostream>
 #include <vector>
 
-// ADS: the point of having this source file and corresponding classes
-// is so that these implementation details are hidden from the user
-// and therefore should not be exported.
-const uint8_t cigar_shift = 4;
-const uint32_t cigar_mask = 0xf;
-const uint8_t sequence_data_enum = 1;
-const uint8_t sam_enum = 3;
-const uint8_t bam_enum = 4;
-const uint16_t freverse = 16;
-
-extern size_t bam_rec_count;
 
 
 
@@ -326,10 +315,8 @@ public:
     return bam_endpos(record);
   }
 
-  inline bool
-  is_rev() const {
-    return (flag() & freverse) != 0;
-  }
+  bool
+  is_rev() const;
 
   bam1_t *record;
 };
@@ -387,11 +374,8 @@ public:
 
   operator bool() const { return (error_code == 0); }
 
-  inline bool
-  is_bam_or_sam() {
-    return fmt->category == sequence_data_enum &&
-           (fmt->format == bam_enum || fmt->format == sam_enum);
-  }
+  bool
+  is_bam_or_sam();
 
   htsFile *file; // ADS: probably needs a better name
   const htsFormat *fmt;
@@ -478,7 +462,7 @@ public:
   }
 
   template<class T> int
-  set(const T &bam_io_file) {
+  set_io(const T &bam_io_file) {
     return(hts_set_thread_pool(bam_io_file.file, &tpool));
   }
 

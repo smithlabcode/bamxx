@@ -15,6 +15,14 @@ using std::string;
 using std::vector;
 
 
+const uint8_t cigar_shift = 4;
+const uint32_t cigar_mask = 0xf;
+const uint8_t sequence_data_enum = 1;
+const uint8_t sam_enum = 3;
+const uint8_t bam_enum = 4;
+const uint16_t freverse = 16;
+
+
 
 static inline int
 str_resize(kstring_t *str, size_t size) {
@@ -160,6 +168,14 @@ bam_rec::tostring() const {
   return ss.str();
 }
 
+
+bool
+bam_rec::is_rev() const {
+  return (flag() & freverse) != 0;
+}
+
+
+
 // MN: Not working as I want it to.
 //     Will work in the future
 int
@@ -170,4 +186,16 @@ bam_header::add_line(const string &type, const vector<string> &args) {
   //va_end(args);
   //return err_num;
   return 0;
+}
+
+
+
+
+
+/*                        bam_infile                    */ 
+
+bool
+bam_infile::is_bam_or_sam() {
+  return fmt->category == sequence_data_enum &&
+         (fmt->format == bam_enum || fmt->format == sam_enum);
 }

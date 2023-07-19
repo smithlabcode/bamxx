@@ -91,7 +91,7 @@ int main(const int argc, const char *argv[]) {
   string cmd = "some command";
   string statsfile = "stats.txt";
   string histfile = "hist.txt";
-  bool bam_format = true;
+  bool bam_format = false;
 
   uniq(verbose, n_threads, cmd, uniq_infile, statsfile, histfile, 
       bam_format, uniq_outfile);

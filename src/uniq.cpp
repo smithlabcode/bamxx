@@ -114,7 +114,7 @@ uniq(const bool VERBOSE, const size_t n_threads,
   if (!hts || errno)
     throw runtime_error("bad htslib file: " + infile);
 
-  if (thread_pool.set(hts) < 0)
+  if (thread_pool.set_io(hts) < 0)
     throw runtime_error("error setting threads");
 
   if (!hts.is_bam_or_sam())
@@ -132,13 +132,12 @@ uniq(const bool VERBOSE, const size_t n_threads,
                        "CL", cmd.c_str(), NULL))
     throw runtime_error("failed to format header");
 
-  // MN: Currently only outputs to sam file
-  bam_outfile out(outfile, hdr_out);
+  bam_outfile out(outfile, hdr_out, !bam_format);
   if (out.error_code) {
     throw runtime_error("failed to open out file");
   }
 
-  if (thread_pool.set(out) < 0)
+  if (thread_pool.set_io(out) < 0)
     throw runtime_error("error setting threads");
 
   // values to tabulate stats; no real cost
