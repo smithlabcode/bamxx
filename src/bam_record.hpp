@@ -17,13 +17,6 @@ class bam_header {
 public:
   bam_header() { header = sam_hdr_init(); }
 
-  // ADS: the reference counting issue needs to be addressed. My
-  // thinking is we should not allow any reference count to exceed `0`
-  // and we should do a full deep copy every time there is any copy of
-  // the header. There is no situation where we would have more than,
-  // say, 128 headers. And that only happens if we do something like
-  // make temporary files correspoding to threads or something.
-  // MN: I made everything deep copy.
   bam_header(const bam_header &hdr) {
     header = sam_hdr_dup(hdr.header);
     error_code = (header == nullptr) ? -1 : 0;
@@ -393,17 +386,14 @@ public:
     if (file != nullptr) hts_close(file);
   }
 
-  bam_outfile(const std::string &filename, bam_header &bh, 
+  bam_outfile(const std::string &filename, const bam_header &bh, 
       const bool _sam = true) : sam(_sam) {
-    // ADS: ??? "bh" non-const as its sam_hdr_t* will need to be
-    // attached here and might be reference counted?
-    // MN : Need to accomodate for binary output
+
     if (sam) file = hts_open(filename.c_str(), "w");
     else file = hts_open(filename.c_str(), "bw");
     error_code = (file) ? 0 : -1;
     if (!bh.header) error_code = -1;
     if (!error_code) {
-      //MN: make a deep copy of the header
       file->bam_header = sam_hdr_dup(bh.header);
       int tmp = sam_hdr_write(file, file->bam_header);
       if (tmp < 0) error_code = tmp;
