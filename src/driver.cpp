@@ -24,7 +24,9 @@ using std::sort;
 
 size_t bam_rec_count = 0;
 
+
 int main(const int argc, const char *argv[]) {
+
 
   srand(408);
   //string inputfile(argv[1]);

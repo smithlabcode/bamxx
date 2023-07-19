@@ -22,6 +22,8 @@ const uint16_t freverse = 16;
 
 extern size_t bam_rec_count;
 
+
+
 class bam_header {
 public:
   bam_header() { header = sam_hdr_init(); }
@@ -49,67 +51,23 @@ public:
     error_code = (header == nullptr) ? -1 : 0;
   }
 
-  void
-  copy(bam_header &hdr) {
-    header = sam_hdr_dup(hdr.header);
-  }
-
   std::string
   tostring() const {
     return std::string(sam_hdr_str(header));
   }
 
-  int32_t &
-  n_targets() {
-    return header->n_targets;
-  }
-
-  const int32_t &
+  const int32_t
   n_targets() const {
     return header->n_targets;
   }
 
-  // ADS: what is the reason for having this exported in the interface
-  // of this class? Should a user of this class ever need to be aware
-  // of `ignore_sam_err`? In what way does the rest of our interface
-  // even allow it to be used?
-  int32_t &
-  ignore_sam_err() {
-    return header->ignore_sam_err;
-  }
-
-  const int32_t &
-  ignore_sam_err() const {
-    return header->ignore_sam_err;
-  }
-
-  size_t &
-  l_text() {
-    return header->l_text;
-  }
-
-  const size_t &
+  size_t 
   l_text() const {
     return header->l_text;
   }
 
-  uint32_t
-  ref_count() {
-    return header->ref_count;
-  }
-
-  const uint32_t
-  ref_count() const {
-    return header->ref_count;
-  }
-
   sam_hdr_t *
   get() {
-    return header;
-  }
-
-  const sam_hdr_t *
-  get() const {
     return header;
   }
 
@@ -118,8 +76,7 @@ public:
     return header->target_name[tid];
   }
 
-  // ADS: below is not good C++. Check out:
-  // https://www.oreilly.com/library/view/c-coding-standards/0321113586/ch99.html
+  // MN: This is under construction. Do not use this. 
   int
   add_line(const std::string &type, const std::vector<std::string> &args);
 
@@ -212,18 +169,6 @@ public:
   const uint8_t &
   qual() const {
     return record->core.qual;
-  }
-
-  // ADS: part of the purpose of this API is to prevent users from
-  // having to even know that `l_extranul` exists.
-  uint8_t &
-  l_extranul() {
-    return record->core.l_extranul;
-  }
-
-  const uint8_t &
-  l_extranul() const {
-    return record->core.l_extranul;
   }
 
   uint16_t &
@@ -455,7 +400,7 @@ public:
 
 class bam_outfile {
 public:
-  bam_outfile(): file(nullptr), error_code(0) {}
+  bam_outfile(): file(nullptr), error_code(0), sam(true) {}
 
   ~bam_outfile() {
     // ADS: condition below ensures the hdr will be destroyed when the
@@ -464,19 +409,18 @@ public:
     if (file != nullptr) hts_close(file);
   }
 
-  bam_outfile(const std::string &filename, bam_header &bh) {
+  bam_outfile(const std::string &filename, bam_header &bh, 
+      const bool _sam = true) : sam(_sam) {
     // ADS: ??? "bh" non-const as its sam_hdr_t* will need to be
     // attached here and might be reference counted?
     // MN : Need to accomodate for binary output
-    file = hts_open(filename.c_str(), "w");
+    if (sam) file = hts_open(filename.c_str(), "w");
+    else file = hts_open(filename.c_str(), "bw");
     error_code = (file) ? 0 : -1;
     if (!bh.header) error_code = -1;
     if (!error_code) {
-      // std::cout << bh.header->ref_count << std::endl;
-      file->bam_header = bh.header;
-      // using same "sam_hdr_t" so increase the ref_count
-      file->bam_header->ref_count++;
-      // ADS: do we care about this: add_pg_line??
+      //MN: make a deep copy of the header
+      file->bam_header = sam_hdr_dup(bh.header);
       int tmp = sam_hdr_write(file, file->bam_header);
       if (tmp < 0) error_code = tmp;
     }
@@ -491,7 +435,6 @@ public:
       return *this;
     }
     assert(file->bam_header != nullptr);
-    // std::cout << br.tostring() << std::endl;
     int tmp = sam_write1(file, file->bam_header, br.record);
     if (tmp < 0) error_code = tmp;
     return *this;
@@ -501,6 +444,7 @@ public:
 
   htsFile *file;  // ADS: probably needs a better name
   int error_code; // ADS: need to define this better
+  bool sam;
 };
 
 template<class T> inline T &
@@ -522,7 +466,6 @@ operator<<(bam_outfile &out, const bam_rec &br) {
 }
 
 
-
 class bam_tpool{
 public:
   bam_tpool(const int n, const int qsize) {
@@ -534,12 +477,9 @@ public:
     hts_tpool_destroy(tpool.pool);
   }
 
-  int set(const bam_infile &bi) {
-    return(hts_set_thread_pool(bi.file, &tpool));
-  }
-
-  int set(const bam_outfile &bo) {
-    return(hts_set_thread_pool(bo.file, &tpool));
+  template<class T> int
+  set(const T &bam_io_file) {
+    return(hts_set_thread_pool(bam_io_file.file, &tpool));
   }
 
   htsThreadPool tpool;

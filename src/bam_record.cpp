@@ -14,6 +14,8 @@ using std::endl;
 using std::string;
 using std::vector;
 
+
+
 static inline int
 str_resize(kstring_t *str, size_t size) {
   if (str->m < size) {
