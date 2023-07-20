@@ -103,6 +103,13 @@ public:
   }
 
 
+
+  size_t 
+  qlen() const {
+    return record->core.l_qseq;
+  }
+
+
   hts_pos_t &
   pos() {
     return record->core.pos;
@@ -134,6 +141,11 @@ public:
     return record->data + (record->core.n_cigar << 2) + record->core.l_qname;
   }
 
+  inline uint8_t *
+  get_seq() {
+    return record->data + (record->core.n_cigar << 2) + record->core.l_qname;
+  }
+
   inline const uint8_t *
   get_qual() const {
     return (record->data + (record->core.n_cigar << 2) + 
@@ -150,14 +162,19 @@ public:
     return bam_get_qname(record);
   }
 
-  inline size_t
+  size_t
   qlen_from_cigar() const {
     return bam_cigar2qlen(record->core.n_cigar, get_cigar());
   }
 
-  inline hts_pos_t
+  hts_pos_t
   endpos() const {
     return bam_endpos(record);
+  }
+
+  int
+  aux_update_int(const std::string &tag, const int64_t val) {
+    return bam_aux_update_int(record, tag.substr(0,2).c_str(), val);
   }
 
   bool
@@ -183,6 +200,12 @@ public:
 
   bam1_t *record;
 };
+
+
+inline void
+swap(bam_rec &a, bam_rec &b) {
+  std::swap(a.record, b.record);
+}
 
 template<class T> T &
 operator<<(T &out, const bam_rec &br) {

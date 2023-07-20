@@ -180,8 +180,6 @@ bam_rec::is_rev() const {
   return (record->core.flag & freverse) != 0;
 }
 
-
-
 // MN: Not working as I want it to.
 //     Will work in the future
 int
