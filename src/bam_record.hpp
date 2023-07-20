@@ -44,15 +44,6 @@ public:
     return header->n_targets;
   }
 
-  size_t 
-  l_text() const {
-    return header->l_text;
-  }
-
-  sam_hdr_t *
-  get() {
-    return header;
-  }
 
   inline std::string
   target_name(const int32_t tid) {
