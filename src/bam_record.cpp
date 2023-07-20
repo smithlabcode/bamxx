@@ -13,6 +13,7 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::vector;
+using std::stringstream;
 
 
 const uint8_t cigar_shift = 4;
@@ -71,15 +72,17 @@ cigar_opchr(const uint32_t c) {
   return cigar_str[cigar_op(c)];
 }
 
-inline void
-write_cigar(std::stringstream &ss, const bam_rec &br) {
-  const uint32_t *cigar = br.get_cigar();
-  for (size_t i = 0; i < br.n_cigar(); i++) {
+
+void
+bam_rec::write_cigar(stringstream &ss) const {
+  const uint32_t *cigar = bam_rec::get_cigar();
+  for (size_t i = 0; i < record->core.n_cigar; i++) {
     ss << cigar_oplen(*cigar) << cigar_opchr(*cigar);
     cigar++;
   }
   ss << '\t';
 }
+
 
 
 static const char *const byte2str[] = {
@@ -106,30 +109,32 @@ static const char *const byte2str[] = {
 };
 
 
-inline void
-write_seq(std::stringstream &ss, const bam_rec &br) {
-  const uint8_t *seq = br.get_seq();
-  for (auto i = 0; i < (br.l_qseq() + 1) / 2; i++) { ss << byte2str[seq[i]]; }
+void
+bam_rec::write_seq(stringstream &ss) const {
+  const uint8_t *seq = bam_rec::get_seq();
+  for (auto i = 0; i < (record->core.l_qseq + 1) / 2; i++) { 
+    ss << byte2str[seq[i]]; 
+  }
   ss << '\t';
 }
 
-inline void
-write_qual(std::stringstream &ss, const bam_rec &br) {
-  if (br.qual() == 0xff)
+void
+bam_rec::write_qual(stringstream &ss) const {
+  if (record->core.qual == 0xff)
     ss << "*";
   else {
-    const uint8_t *qual_seq = br.get_qual();
-    for (auto i = 0; i < br.l_qseq(); i++) {
+    const uint8_t *qual_seq = bam_rec::get_qual();
+    for (auto i = 0; i < record->core.l_qseq; i++) {
       ss << static_cast<char>(qual_seq[i]);
     }
   }
 }
 
-inline void
-write_aux(std::stringstream &ss, const bam_rec &br) {
+void
+bam_rec::write_aux(std::stringstream &ss) const {
   kstring_t str = {0, 0, NULL};
-  const uint8_t *aux = br.get_aux();
-  const uint8_t *end = br.data() + br.l_data();
+  const uint8_t *aux = bam_rec::get_aux();
+  const uint8_t *end = record->data + record->l_data;
   while (end - aux >= 4) {
     putc('\t', &str);
     aux = static_cast<const uint8_t *> // Not sure how else to do it.
@@ -140,30 +145,31 @@ write_aux(std::stringstream &ss, const bam_rec &br) {
   free(str.s);
 }
 
-static inline void
-write_mtid(std::stringstream &ss, const bam_rec &br) {
-  if (br.mtid() == -1)
+inline void
+bam_rec::write_mtid(stringstream &ss) const {
+  if (record->core.mtid == -1)
     ss << "*\t";
   else
-    ss << br.mtid() << "\t";
+    ss << record->core.mtid << "\t";
 }
 
 string
 bam_rec::tostring() const {
   std::stringstream ss;
+  bam1_core_t *core = &record->core;
 
-  ss << bam_get_qname(record) << "\t";
-  ss << flag() << "\t";
-  ss << tid() << "\t";
-  ss << pos() + 1 << "\t";
-  ss << static_cast<int>(qual()) << "\t";
-  write_cigar(ss, *this);
-  write_mtid(ss, *this);
-  ss << mpos() + 1 << "\t";
-  ss << isize() << "\t";
-  write_seq(ss, *this);
-  write_qual(ss, *this);
-  write_aux(ss, *this);
+  ss << bam_rec::qname() << "\t";
+  ss << core->flag << "\t";
+  ss << core->tid << "\t";
+  ss << core->pos + 1 << "\t";
+  ss << static_cast<int>(core->pos) << "\t";
+  bam_rec::write_cigar(ss);
+  bam_rec::write_mtid(ss);
+  ss << core->mpos + 1 << "\t";
+  ss << core->isize << "\t";
+  bam_rec::write_seq(ss);
+  bam_rec::write_qual(ss);
+  bam_rec::write_aux(ss);
 
   return ss.str();
 }
@@ -171,7 +177,7 @@ bam_rec::tostring() const {
 
 bool
 bam_rec::is_rev() const {
-  return (flag() & freverse) != 0;
+  return (record->core.flag & freverse) != 0;
 }
 
 

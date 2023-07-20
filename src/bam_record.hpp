@@ -111,8 +111,6 @@ public:
     }
   }
 
-  std::string
-  tostring() const;
 
   hts_pos_t &
   pos() {
@@ -134,164 +132,26 @@ public:
     return record->core.tid;
   }
 
-  uint16_t &
-  bin() {
-    return record->core.bin;
-  }
-
-  const uint16_t &
-  bin() const {
-    return record->core.bin;
-  }
-
-  uint8_t &
-  qual() {
-    return record->core.qual;
-  }
-
-  const uint8_t &
-  qual() const {
-    return record->core.qual;
-  }
-
-  uint16_t &
-  flag() {
-    return record->core.flag;
-  }
-
-  const uint16_t &
-  flag() const {
-    return record->core.flag;
-  }
-
-  uint16_t &
-  l_qname() {
-    return record->core.l_qname;
-  }
-
-  const uint16_t &
-  l_qname() const {
-    return record->core.l_qname;
-  }
-
-  uint32_t &
-  n_cigar() {
-    return record->core.n_cigar;
-  }
-
-  const uint32_t &
-  n_cigar() const {
-    return record->core.n_cigar;
-  }
-
-  int32_t &
-  l_qseq() {
-    return record->core.l_qseq;
-  }
-
-  const int32_t &
-  l_qseq() const {
-    return record->core.l_qseq;
-  }
-
-  int32_t &
-  mtid() {
-    return record->core.mtid;
-  }
-
-  const int32_t &
-  mtid() const {
-    return record->core.mtid;
-  }
-
-  hts_pos_t &
-  mpos() {
-    return record->core.mpos;
-  }
-
-  const hts_pos_t &
-  mpos() const {
-    return record->core.mpos;
-  }
-
-  hts_pos_t &
-  isize() {
-    return record->core.isize;
-  }
-
-  const hts_pos_t &
-  isize() const {
-    return record->core.isize;
-  }
-
-  uint64_t &
-  id() {
-    return record->id;
-  }
-
-  const uint64_t &
-  id() const {
-    return record->id;
-  }
-
-  int &
-  l_data() {
-    return record->l_data;
-  }
-
-  const int &
-  l_data() const {
-    return record->l_data;
-  }
-
-  uint8_t *
-  data() {
-    return record->data;
-  }
-
-  const uint8_t *
-  data() const {
-    return record->data;
-  }
-
-  uint32_t &
-  m_data() {
-    return record->m_data;
-  }
-
-  const uint32_t &
-  m_data() const {
-    return record->m_data;
-  }
-
-  bam1_t *
-  get() {
-    return record;
-  }
-
-  const bam1_t *
-  get() const {
-    return record;
-  }
-
   inline const uint32_t *
   get_cigar() const {
-    return reinterpret_cast<const uint32_t *>(data() + l_qname());
+    return reinterpret_cast<const uint32_t *>(record->data + 
+        record->core.l_qname);
   }
 
   inline const uint8_t *
   get_seq() const {
-    return data() + (n_cigar() << 2) + l_qname();
+    return record->data + (record->core.n_cigar << 2) + record->core.l_qname;
   }
 
   inline const uint8_t *
   get_qual() const {
-    return (data() + (n_cigar() << 2) + l_qname() + ((l_qseq() + 1) >> 1));
+    return (record->data + (record->core.n_cigar << 2) + 
+        record->core.l_qname + ((record->core.l_qseq + 1) >> 1));
   }
 
   inline const uint8_t *
   get_aux() const {
-    return get_qual() + l_qseq();
+    return get_qual() + record->core.l_qseq;
   }
 
   inline std::string
@@ -301,7 +161,7 @@ public:
 
   inline size_t
   qlen_from_cigar() const {
-    return bam_cigar2qlen(n_cigar(), get_cigar());
+    return bam_cigar2qlen(record->core.n_cigar, get_cigar());
   }
 
   inline hts_pos_t
@@ -311,6 +171,24 @@ public:
 
   bool
   is_rev() const;
+
+  void
+  write_cigar(std::stringstream &ss) const;
+
+  void
+  write_mtid(std::stringstream &ss) const;
+
+  void
+  write_seq(std::stringstream &ss) const;
+
+  void
+  write_qual(std::stringstream &ss) const;
+
+  void
+  write_aux(std::stringstream &ss) const;
+
+  std::string
+  tostring() const;
 
   bam1_t *record;
 };
@@ -338,13 +216,15 @@ public:
     file = hts_open(filename.c_str(), "r");
     error_code = (file) ? 0 : -1;
     if (!error_code) {
-      file->bam_header = bam_hdr_read(file->fp.bgzf);
       fmt = hts_get_format(file);
+      file->bam_header = bam_hdr_read(file->fp.bgzf);
       if (!file->bam_header) {
+        if (file != nullptr) hts_close(file);
         throw std::runtime_error("Null or invalid header.");
       }
     }
     else {
+      if (file != nullptr) hts_close(file);
       throw std::runtime_error("File could not be opened.");
     }
   }
