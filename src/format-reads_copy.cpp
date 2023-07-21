@@ -361,37 +361,8 @@ merge_cigar_ops(const size_t n_cigar, uint32_t *cigar) {
   return std::distance(cigar, c_itr1);
 }
 
-//MN: under construction
-//static size_t
-//correct_cigar(bam_rec &b) {
-  //[> This function will change external insertions into soft clip
-     //operations. Not sure why those would be present. It will also
-     //change internal soft-clip operations into insertions. This could
-     //be needed if soft-clipped ends of reads were moved to the middle
-     //of a merged fragment. Finally, it will collapse adjacent
-     //identical operations. None of this impacts the seq/qual/aux which
-     //get moved as a block */
-
-  //uint32_t *cigar = b.get_cigar();
-  //size_t n_cigar = b.record->core.n_cigar;
-  //fix_external_insertion(n_cigar, cigar);
-  //fix_internal_softclip(n_cigar, cigar);
-
-  //// merge identical adjacent cigar ops and get new number of ops
-  //n_cigar = merge_cigar_ops(n_cigar, cigar);
-  //// difference in bytes to shift the internal data
-  //const size_t delta = (b.record->core.n_cigar - n_cigar) * sizeof(uint32_t);
-  //if (delta > 0) { // if there is a difference; do the shift
-    //auto data_end = b.get_aux() + b.l_aux();
-    //// MN: todo: resume here
-    //std::copy(b.get_seq(), data_end, b.get_seq() - delta);
-    //b.record->core.n_cigar = n_cigar; // and update number of cigar ops
-  //}
-  //return delta;
-//}
-
 static size_t
-correct_cigar(bam1_t *b) {
+correct_cigar(bam_rec &b) {
   /* This function will change external insertions into soft clip
      operations. Not sure why those would be present. It will also
      change internal soft-clip operations into insertions. This could
@@ -400,19 +371,21 @@ correct_cigar(bam1_t *b) {
      identical operations. None of this impacts the seq/qual/aux which
      get moved as a block */
 
-  uint32_t *cigar = bam_get_cigar(b);
-  size_t n_cigar = b->core.n_cigar;
+  uint32_t *cigar = b.get_cigar();
+  size_t n_cigar = b.record->core.n_cigar;
   fix_external_insertion(n_cigar, cigar);
   fix_internal_softclip(n_cigar, cigar);
 
   // merge identical adjacent cigar ops and get new number of ops
   n_cigar = merge_cigar_ops(n_cigar, cigar);
   // difference in bytes to shift the internal data
-  const size_t delta = (b->core.n_cigar - n_cigar) * sizeof(uint32_t);
+  const size_t delta = (b.record->core.n_cigar - n_cigar) * sizeof(uint32_t);
   if (delta > 0) { // if there is a difference; do the shift
-    auto data_end = bam_get_aux(b) + bam_get_l_aux(b);
-    std::copy(bam_get_seq(b), data_end, bam_get_seq(b) - delta);
-    b->core.n_cigar = n_cigar; // and update number of cigar ops
+    const uint8_t *data_end = b.get_aux() + b.l_aux();
+    uint8_t *seq = b.get_seq();
+    const uint8_t *seq_copy = seq;
+    std::copy(seq_copy, data_end, seq - delta);
+    b.record->core.n_cigar = n_cigar; // and update number of cigar ops
   }
   return delta;
 }
@@ -512,10 +485,10 @@ revcom_byte_then_reverse(unsigned char *a, unsigned char *b) {
 }
 
 static void
-revcomp_seq_by_byte(bam1_t *aln) {
-  const size_t l_qseq = get_qlen(aln);
-  auto seq = bam_get_seq(aln);
-  const size_t num_bytes = ceil(l_qseq / 2.0);
+revcomp_seq_by_byte(bam_rec &aln) {
+  const size_t l_qseq = aln.qlen();
+  auto seq = aln.get_seq();
+  const size_t num_bytes = (l_qseq + 1) / 2;
   auto seq_end = seq + num_bytes;
   revcom_byte_then_reverse(seq, seq_end);
   if (l_qseq % 2 == 1) { // for odd-length sequences
@@ -590,9 +563,6 @@ merge_by_byte(const bam_rec &a, const bam_rec &b, bam_rec &c) {
 
 
 static inline bool
-is_a_rich(const bam1_t *b) { return bam_aux2A(bam_aux_get(b, "CV")) == 'A'; }
-
-static inline bool
 format_is_bam_or_sam(htsFile *hts) {
   const htsFormat *fmt = hts_get_format(hts);
   return fmt->category == sequence_data &&
@@ -600,19 +570,20 @@ format_is_bam_or_sam(htsFile *hts) {
 }
 
 static void
-flip_conversion(bam1_t *aln) {
-  if (aln->core.flag & BAM_FREVERSE)
-    aln->core.flag = aln->core.flag & (~BAM_FREVERSE);
+flip_conversion(bam_rec &aln) {
+  if (aln.record->core.flag & BAM_FREVERSE)
+    aln.record->core.flag = aln.record->core.flag & (~BAM_FREVERSE);
   else
-    aln->core.flag = aln->core.flag | BAM_FREVERSE;
+    aln.record->core.flag = aln.record->core.flag | BAM_FREVERSE;
 
   revcomp_seq_by_byte(aln);
 
   // ADS: don't like *(cv + 1) below, but no HTSlib function for it?
-  uint8_t *cv = bam_aux_get(aln, "CV");
+  uint8_t *cv = bam_aux_get(aln.record, "CV");
   if (!cv) throw dnmt_error("bam_aux_get failed for CV");
   *(cv + 1) = 'T';
 }
+
 
 static bool
 are_mates(const bam_rec &one, const bam_rec &two) {
@@ -958,7 +929,7 @@ merge_mates(const size_t range,
   }
 
   // if merging two ends caused strange things in the cigar, fix them.
-  correct_cigar(merged.record);
+  correct_cigar(merged);
 
   return two_e - one_s;
 }
@@ -998,7 +969,7 @@ standardize_format(const string &input_format, bam_rec &aln) {
     if (err_code < 0) throw dnmt_error(err_code, "bam_aux_append");
 
     if (bam_is_rev(aln.record))
-      revcomp_seq_by_byte(aln.record); // reverse complement if needed
+      revcomp_seq_by_byte(aln); // reverse complement if needed
   }
   if (input_format == "bismark") {
     // ADS: Previously we modified the read names at the first
@@ -1026,7 +997,7 @@ standardize_format(const string &input_format, bam_rec &aln) {
     if (err_code < 0) throw dnmt_error(err_code, "bam_aux_append");
 
     if (bam_is_rev(aln.record))
-      revcomp_seq_by_byte(aln.record); // reverse complement if needed
+      revcomp_seq_by_byte(aln); // reverse complement if needed
   }
 
   // Be sure this doesn't depend on mapper! Removes the "qual" part of
@@ -1272,15 +1243,17 @@ format(const string &cmd, const size_t n_threads,
       const size_t frag_len = merge_mates(max_frag_len, prev_aln, 
           aln, merged);
       if (frag_len > 0 && frag_len < max_frag_len) {
-        if (is_a_rich(merged.record)) flip_conversion(merged.record);
-        err_code = sam_write1(out.file, hdr.header, merged.record);
-        if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
+        if (merged.is_a_rich()) flip_conversion(merged);
+        if (!(out << merged)) throw dnmt_error(err_code, "format:sam_write1");
+        //err_code = sam_write1(out.file, hdr.header, merged.record);
+        //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
       }
       else {
-        if (is_a_rich(prev_aln.record)) flip_conversion(prev_aln.record);
+        if (prev_aln.is_a_rich()) flip_conversion(prev_aln);
         err_code = sam_write1(out.file, hdr.header, prev_aln.record);
         if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-        if (is_a_rich(aln.record)) flip_conversion(aln.record);
+        //if (!(out << prev_aln)) throw dnmt_error(err_code, "format:sam_write1");
+        if (aln.is_a_rich()) flip_conversion(aln);
         err_code = sam_write1(out.file, hdr.header, aln.record);
         if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
       }
@@ -1288,7 +1261,7 @@ format(const string &cmd, const size_t n_threads,
     }
     else {
       if (!previous_was_merged) {
-        if (is_a_rich(prev_aln.record)) flip_conversion(prev_aln.record);
+        if (prev_aln.is_a_rich()) flip_conversion(prev_aln);
         err_code = sam_write1(out.file, hdr.header, prev_aln.record);
         if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
       }
@@ -1299,7 +1272,7 @@ format(const string &cmd, const size_t n_threads,
   if (err_code < -1) throw dnmt_error(err_code, "format:sam_read1");
 
   if (!previous_was_merged) {
-    if (is_a_rich(prev_aln.record)) flip_conversion(prev_aln.record);
+    if (prev_aln.is_a_rich()) flip_conversion(prev_aln);
     err_code = sam_write1(out.file, hdr.header, prev_aln.record);
     if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
   }
