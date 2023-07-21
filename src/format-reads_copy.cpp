@@ -81,36 +81,18 @@ roundup_to_power_of_2(uint32_t &x) {
 }
 
 static int
-sam_realloc_bam_data(bam1_t *b, size_t desired) {
+sam_realloc_bam_data(bam_rec &b, size_t desired) {
   /* returns flag: either 0 for success or -1 for error (unable to
      allocate desired memory) */
   uint32_t new_m_data = desired;
   roundup_to_power_of_2(new_m_data);
   if (new_m_data < desired)  return -1;
-  uint8_t *new_data = (uint8_t *)realloc(b->data, new_m_data);
+  uint8_t *new_data = (uint8_t *)realloc(b.record->data, new_m_data);
   if (!new_data) return -1;
   // ADS: what would be the state of members below if -1 was returned?
-  b->data = new_data;
-  b->m_data = new_m_data;
+  b.record->data = new_data;
+  b.record->m_data = new_m_data;
   return 0;
-}
-
-static inline void
-bam_copy_core(const bam1_t *a, bam1_t *b) {
-  /* ADS: prepared for a possibly more efficient block copy to assign
-     all variables at once */
-  b->core.pos = a->core.pos;
-  b->core.tid = a->core.tid;
-  b->core.bin = a->core.bin;
-  b->core.qual = a->core.qual;
-  b->core.l_extranul = a->core.l_extranul;
-  b->core.flag = a->core.flag;
-  b->core.l_qname = a->core.l_qname;
-  b->core.n_cigar = a->core.n_cigar;
-  b->core.l_qseq = a->core.l_qseq;
-  b->core.mtid = a->core.mtid;
-  b->core.mpos = a->core.mpos;
-  b->core.isize = a->core.isize;
 }
 
 static inline void
@@ -138,76 +120,6 @@ bam_set1_core(bam1_core_t &core,
   core.mtid = mtid;
   core.mpos = mpos;
   core.isize = isize;
-}
-
-static int
-bam_set1_wrapper(bam1_t *bam,
-                 const size_t l_qname, const char *qname,
-                 const uint16_t flag, const int32_t tid,
-                 const hts_pos_t pos, const uint8_t mapq,
-                 const size_t n_cigar, const uint32_t *cigar,
-                 const int32_t mtid, const hts_pos_t mpos,
-                 const hts_pos_t isize, const size_t l_seq,
-                 const size_t l_aux) {
-  /* This is based on how assignment is done in the `bam_set1`
-     function defined in `sam.c` from htslib */
-
-  /*
-   * This modification assigns variables of bam1_t struct but not the sequence.
-   *
-   * Many checks have been removed because they are checked in code
-   * that calls this function, mostly because they already come from a
-   * valid `bam1_t` struct and so the values have been individually
-   * validated.
-   *
-   * Assumptions:
-   * cigar has been computed and is in the right format
-   * rlen = isize
-   * qlen = l_seq
-   * l_qname <= 254
-   * HTS_POS_MAX - rlen > pos
-   * Where HTS_POS_MAX = ((((int64_t)INT_MAX)<<32)|INT_MAX) is the highest
-   * supported position.
-   *
-   * Number of bytes needed for the data is smaller than INT32_MAX
-   *
-   * qual = NULL, because we do not keep the quality scores through
-   * formatting the reads.
-   */
-
-  // `qname_nuls` below is the number of '\0' to use to pad the qname
-  // so that the cigar has 4-byte alignment.
-  const size_t qname_nuls = 4 - l_qname % 4;
-  bam_set1_core(bam->core, l_qname, flag, tid, pos, mapq, n_cigar,
-                mtid, mpos, isize, l_seq, qname_nuls);
-
-  const size_t data_len =
-    (l_qname + qname_nuls + n_cigar*sizeof(uint32_t) + (l_seq + 1) / 2 + l_seq);
-
-  bam->l_data = data_len;
-  if (data_len + l_aux > bam->m_data) {
-    const int ret = sam_realloc_bam_data(bam, data_len + l_aux);
-    if (ret < 0) {
-      throw dnmt_error(ret, "Failed to allocate memory for BAM record");
-    }
-  }
-  auto data_iter = bam->data;
-
-  std::copy_n(qname, l_qname, data_iter);
-  std::fill_n(data_iter + l_qname, qname_nuls, '\0');
-  data_iter += l_qname + qname_nuls;
-
-  // ADS: reinterpret here because we know the cigar is originally an
-  // array of uint32_t and has been aligned for efficiency
-  std::copy_n(cigar, n_cigar, reinterpret_cast<uint32_t *>(data_iter));
-  data_iter += n_cigar * sizeof(uint32_t);
-
-  // skipping sequece assignment
-  data_iter += (l_seq + 1) / 2;
-
-  std::fill(data_iter, data_iter + l_seq, '\xff');
-
-  return static_cast<int>(data_len);
 }
 
 static int
@@ -256,7 +168,7 @@ bam_set1_wrapper(bam_rec &bam,
 
   bam.record->l_data = data_len;
   if (data_len + l_aux > bam.record->m_data) {
-    const int ret = sam_realloc_bam_data(bam.record, data_len + l_aux);
+    const int ret = sam_realloc_bam_data(bam, data_len + l_aux);
     if (ret < 0) {
       throw dnmt_error(ret, "Failed to allocate memory for BAM record");
     }
@@ -288,9 +200,6 @@ eats_ref(const uint32_t c) { return bam_cigar_type(bam_cigar_op(c)) & 2; }
 
 static inline bool
 eats_query(const uint32_t c) { return bam_cigar_type(bam_cigar_op(c)) & 1; }
-
-static inline size_t
-bam_get_n_cigar(const bam1_t *b) { return b->core.n_cigar; }
 
 static inline uint32_t
 to_insertion(const uint32_t x) {
@@ -390,15 +299,6 @@ correct_cigar(bam_rec &b) {
   return delta;
 }
 
-static inline size_t
-get_rlen(const bam1_t *b) { // less tedious
-  return bam_cigar2rlen(b->core.n_cigar, bam_get_cigar(b));
-}
-
-static inline size_t
-get_qlen(const bam1_t *b) { // less tedious
-  return b->core.l_qseq;
-}
 
 static inline void
 complement_seq(char *first, char *last) {
@@ -602,16 +502,16 @@ truncate_overlap(const bam_rec &a, const uint32_t overlap, bam_rec &c) {
   const uint32_t c_cur =
     get_full_and_partial_ops(a_cig, a_ops, overlap, &part_op);
 
-  // ADS: hack here because the get_full_and_partial_ops doesn't do
+  // ads: hack here because the get_full_and_partial_ops doesn't do
   // exactly what is needed for this.
   const bool use_partial = (c_cur < a.record->core.n_cigar && part_op > 0);
 
   const uint32_t c_ops = c_cur + use_partial;
   uint32_t *c_cig = (uint32_t *)calloc(c_ops, sizeof(uint32_t));
 
-  // ADS: replace this with a std::copy
+  // ads: replace this with a std::copy
   memcpy(c_cig, a_cig, c_cur * sizeof(uint32_t));
-  // ADS: warning, if !use_partial, the amount of part_op used below
+  // ads: warning, if !use_partial, the amount of part_op used below
   // would make no sense.
   if (use_partial)
     c_cig[c_cur] = bam_cigar_gen(part_op, bam_cigar_op(a_cig[c_cur]));
@@ -725,7 +625,7 @@ merge_overlap(const bam_rec &a, const bam_rec &b,
                                           BAM_FREAD2 |
                                           BAM_FREVERSE));
 
-  int ret = bam_set1_wrapper(c.record,
+  int ret = bam_set1_wrapper(c,
                              a.record->core.l_qname - (a.record->core.l_extranul + 1),
                              bam_get_qname(a.record),
                              flag, // (no PE; revcomp info)
@@ -1011,29 +911,21 @@ standardize_format(const string &input_format, bam_rec &aln) {
 
 static vector<string>
 load_read_names(const string &inputfile, const size_t n_reads) {
-  samFile *hts = hts_open(inputfile.c_str(), "r");
+  bam_infile hts(inputfile);
   if (!hts) throw dnmt_error("failed to open file: " + inputfile);
 
-  sam_hdr_t *hdr = sam_hdr_read(hts);
-  if (!hdr) throw dnmt_error("failed to read header: " + inputfile);
+  bam_header hdr(hts.file->bam_header);
+  if (!hdr.header) throw dnmt_error("failed to read header: " + inputfile);
 
-  bam1_t *aln = bam_init1();
+  bam_rec aln;
   vector<string> names;
   size_t count = 0;
-  int err_code = 0;
-
-  while ((err_code = sam_read1(hts, hdr, aln)) >= 0 && count++ < n_reads)
-    names.push_back(string(bam_get_qname(aln)));
-  // err_core == -1 means EOF
-  if (err_code < -1) dnmt_error(err_code, "load_read_names:sam_read1");
-
-  bam_destroy1(aln);
-  bam_hdr_destroy(hdr);
-  err_code = hts_close(hts);
-  if (err_code < 0) throw dnmt_error(err_code, "check_input_file:hts_close");
+  while ((hts >> aln)  && count++ < n_reads)
+    names.push_back(aln.qname());
 
   return names;
 }
+
 
 static size_t
 get_max_repeat_count(const vector<string> &names, const size_t suff_len) {
@@ -1245,128 +1137,30 @@ format(const string &cmd, const size_t n_threads,
       if (frag_len > 0 && frag_len < max_frag_len) {
         if (merged.is_a_rich()) flip_conversion(merged);
         if (!(out << merged)) throw dnmt_error(err_code, "format:sam_write1");
-        //err_code = sam_write1(out.file, hdr.header, merged.record);
-        //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
       }
       else {
         if (prev_aln.is_a_rich()) flip_conversion(prev_aln);
-        err_code = sam_write1(out.file, hdr.header, prev_aln.record);
-        if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-        //if (!(out << prev_aln)) throw dnmt_error(err_code, "format:sam_write1");
+        if (!(out << prev_aln)) throw dnmt_error(err_code, "format:sam_write1");
         if (aln.is_a_rich()) flip_conversion(aln);
-        err_code = sam_write1(out.file, hdr.header, aln.record);
-        if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
+        if (!(out << aln)) throw dnmt_error(err_code, "format:sam_write1");
       }
       previous_was_merged = true;
     }
     else {
       if (!previous_was_merged) {
         if (prev_aln.is_a_rich()) flip_conversion(prev_aln);
-        err_code = sam_write1(out.file, hdr.header, prev_aln.record);
-        if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
+        if (!(out << prev_aln)) throw dnmt_error(err_code, "format:sam_write1");
       }
       previous_was_merged = false;
     }
-    std::swap(prev_aln.record, aln.record);
+    swap(prev_aln, aln);
   }
   if (err_code < -1) throw dnmt_error(err_code, "format:sam_read1");
 
   if (!previous_was_merged) {
     if (prev_aln.is_a_rich()) flip_conversion(prev_aln);
-    err_code = sam_write1(out.file, hdr.header, prev_aln.record);
-    if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
+    if (!(out << prev_aln)) throw dnmt_error(err_code, "format:sam_write1");
   }
-
-  // turn off the lights
-  // do this after the files have been closed
-
-
-
-
-  //// open the hts files; assume already checked
-  //samFile *hts = hts_open(inputfile.c_str(), "r");
-  //samFile *out = hts_open(outfile.c_str(), bam_format ? "wb" : "w");
-
-  //// set the threads
-  //htsThreadPool the_thread_pool{hts_tpool_init(n_threads), 0};
-  //err_code = hts_set_thread_pool(hts, &the_thread_pool);
-  //if (err_code < 0) throw dnmt_error("error setting threads");
-  //err_code = hts_set_thread_pool(out, &the_thread_pool);
-  //if (err_code < 0) throw dnmt_error("error setting threads");
-
-  //// headers: load the input file's header, and then update to the
-  //// output file's header, then write it and destroy; we will only use
-  //// the input file header.
-  //sam_hdr_t *hdr = sam_hdr_read(hts);
-  //if (!hdr) throw dnmt_error("failed to read header");
-  //sam_hdr_t *hdr_out = bam_hdr_dup(hdr);
-  //if (!hdr_out) throw dnmt_error("failed create header");
-  //add_pg_line(cmd, hdr_out);
-  //err_code = sam_hdr_write(out, hdr_out);
-  //if (err_code) throw dnmt_error(err_code, "failed to output header");
-
-  //// now process the reads
-  //bam1_t *aln = bam_init1();
-  //bam1_t *prev_aln = bam_init1();
-  //bam1_t *merged = bam_init1();
-  //bool previous_was_merged = false;
-
-  //err_code = sam_read1(hts, hdr, aln); // for EOF, err_code == -1
-  //if (err_code < -1) throw dnmt_error(err_code, "format:sam_read1");
-
-  //std::swap(aln, prev_aln); // start with prev_aln being first read
-
-  //while ((err_code = sam_read1(hts, hdr, aln)) >= 0) {
-    //standardize_format(input_format, aln);
-    //if (same_name(prev_aln, aln, suff_len)) {
-      //// below: essentially check for dovetail
-      //if (!bam_is_rev(aln)) std::swap(prev_aln, aln);
-      //const size_t frag_len = merge_mates(max_frag_len, prev_aln, aln, merged);
-      //if (frag_len > 0 && frag_len < max_frag_len) {
-        //if (is_a_rich(merged)) flip_conversion(merged);
-        //err_code = sam_write1(out, hdr, merged);
-        //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-      //}
-      //else {
-        //if (is_a_rich(prev_aln)) flip_conversion(prev_aln);
-        //err_code = sam_write1(out, hdr, prev_aln);
-        //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-        //if (is_a_rich(aln)) flip_conversion(aln);
-        //err_code = sam_write1(out, hdr, aln);
-        //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-      //}
-      //previous_was_merged = true;
-    //}
-    //else {
-      //if (!previous_was_merged) {
-        //if (is_a_rich(prev_aln)) flip_conversion(prev_aln);
-        //err_code = sam_write1(out, hdr, prev_aln);
-        //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-      //}
-      //previous_was_merged = false;
-    //}
-    //std::swap(prev_aln, aln);
-  //}
-  //if (err_code < -1) throw dnmt_error(err_code, "format:sam_read1");
-
-  //if (!previous_was_merged) {
-    //if (is_a_rich(prev_aln)) flip_conversion(prev_aln);
-    //err_code = sam_write1(out, hdr, prev_aln);
-    //if (err_code < 0) throw dnmt_error(err_code, "format:sam_write1");
-  //}
-
-  //// turn off the lights
-  //bam_destroy1(prev_aln);
-  //bam_destroy1(aln);
-  //bam_destroy1(merged);
-  //bam_hdr_destroy(hdr);
-  //bam_hdr_destroy(hdr_out);
-  //err_code = hts_close(hts);
-  //if (err_code < 0) throw dnmt_error(err_code, "format:hts_close");
-  //err_code = hts_close(out);
-  //if (err_code < 0) throw dnmt_error(err_code, "format:hts_close");
-  //// do this after the files have been closed
-  //hts_tpool_destroy(the_thread_pool.pool);
 }
 
 int main_format(int argc, const char **argv) {
