@@ -93,6 +93,12 @@ public:
     aln = nullptr;
   }
 
+  void
+  copy(const bam_rec &aln) {
+    record = bam_copy1(record, aln.record);
+  }
+  
+
   ~bam_rec() {
     // ADS: is it possible for a bam_rec to have `record == NULL`? Can
     // that state be reached?
@@ -136,6 +142,12 @@ public:
         record->core.l_qname);
   }
 
+  inline uint32_t *
+  get_cigar() {
+    return reinterpret_cast<uint32_t *>(record->data + 
+        record->core.l_qname);
+  }
+
   inline const uint8_t *
   get_seq() const {
     return record->data + (record->core.n_cigar << 2) + record->core.l_qname;
@@ -152,10 +164,15 @@ public:
         record->core.l_qname + ((record->core.l_qseq + 1) >> 1));
   }
 
-  inline const uint8_t *
+  const uint8_t *
   get_aux() const {
     return get_qual() + record->core.l_qseq;
   }
+
+  const size_t
+  l_aux() const {
+    return bam_get_l_aux(record);
+  } 
 
   inline std::string
   qname() const {
@@ -165,6 +182,11 @@ public:
   size_t
   qlen_from_cigar() const {
     return bam_cigar2qlen(record->core.n_cigar, get_cigar());
+  }
+
+  size_t
+  rlen_from_cigar() const {
+    return bam_cigar2rlen(record->core.n_cigar, get_cigar());
   }
 
   hts_pos_t
