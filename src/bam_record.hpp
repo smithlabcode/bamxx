@@ -45,10 +45,17 @@ public:
   }
 
 
-  inline std::string
+  std::string
   target_name(const int32_t tid) {
     return header->target_name[tid];
   }
+
+  std::string
+  get_str() const {
+    return sam_hdr_str(header);
+  }
+
+
 
   // MN: This is under construction. Do not use this. 
   int
@@ -124,6 +131,16 @@ public:
   const hts_pos_t &
   pos() const {
     return record->core.pos;
+  }
+
+  uint16_t &
+  flag() {
+    return record->core.flag;
+  }
+
+  const uint16_t &
+  flag() const {
+    return record->core.flag;
   }
 
   int32_t &
@@ -217,6 +234,9 @@ public:
 
   bool
   is_rev() const;
+
+  void
+  revcomp(); // Reverse-complement the sequence in place.
 
   void
   write_cigar(std::stringstream &ss) const;

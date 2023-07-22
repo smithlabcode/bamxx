@@ -60,6 +60,8 @@ using std::cerr;
 using std::endl;
 using std::string;
 using std::vector;
+using std::transform;
+using std::toupper;
 
 const uint32_t cins = 1;  // copied from sam.h
 const uint32_t csoft_clip = 4; // copied from sam.h
@@ -237,7 +239,7 @@ get_full_and_partial_ops(const uint32_t *cig_in, const uint32_t in_ops,
  * output of "A-" is "-T", and the output of "C-" is "-G", and so
  * forth. The user must handle this case separately.
  */
-const uint8_t byte_revcom_table[] = {
+const uint8_t byte_revcomp_table[] = {
   0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
   8, 136, 72, 0, 40, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 248,
   4, 132, 68, 0, 36, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 244,
@@ -255,37 +257,6 @@ const uint8_t byte_revcom_table[] = {
   0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
  15, 143, 79, 0, 47, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 255
 };
-
-
-static inline void
-revcom_byte_then_reverse(unsigned char *a, unsigned char *b) {
-  unsigned char *p1, *p2;
-  for (p1 = a, p2 = b - 1; p2 > p1; ++p1, --p2) {
-    *p1 = byte_revcom_table[*p1];
-    *p2 = byte_revcom_table[*p2];
-    *p1 ^= *p2;
-    *p2 ^= *p1;
-    *p1 ^= *p2;
-  }
-  if (p1 == p2) *p1 = byte_revcom_table[*p1];
-}
-
-static void
-revcomp_seq_by_byte(bam_rec &aln) {
-  const size_t l_qseq = aln.qlen();
-  auto seq = aln.get_seq();
-  const size_t num_bytes = (l_qseq + 1) / 2;
-  auto seq_end = seq + num_bytes;
-  revcom_byte_then_reverse(seq, seq_end);
-  if (l_qseq % 2 == 1) { // for odd-length sequences
-    for (size_t i = 0; i < num_bytes - 1; i++) {
-      // swap 4-bit chunks within consecutive bytes like this:
-      // (----aaaa bbbbcccc dddd....) => (aaaabbbb ccccdddd ....)
-      seq[i] = (seq[i] << 4) | (seq[i + 1] >> 4);
-    }
-    seq[num_bytes - 1] <<= 4;
-  }
-}
 
 
 
@@ -321,25 +292,25 @@ merge_by_byte(const bam_rec &a, const bam_rec &b, bam_rec &c) {
     //                      or [ aa aa aa a- ]
     c_seq[a_num_bytes - 1] &= 0xf0;
     c_seq[a_num_bytes - 1] |= is_b_odd ?
-        byte_revcom_table[b_seq[b_num_bytes - 1]] :
-        byte_revcom_table[b_seq[b_num_bytes - 1]] >> 4;
+        byte_revcomp_table[b_seq[b_num_bytes - 1]] :
+        byte_revcomp_table[b_seq[b_num_bytes - 1]] >> 4;
   }
   if (is_c_odd) {
     // c_seq looks like either [ aa aa aa aa ]
     //                      or [ aa aa aa ab ]
     for (size_t i = 0; i < b_num_bytes - 1; i++) {
       c_seq[a_num_bytes + i] =
-          (byte_revcom_table[b_seq[b_num_bytes - i - 1]] << 4) |
-          (byte_revcom_table[b_seq[b_num_bytes - i - 2]] >> 4);
+          (byte_revcomp_table[b_seq[b_num_bytes - i - 1]] << 4) |
+          (byte_revcomp_table[b_seq[b_num_bytes - i - 2]] >> 4);
     }
-    c_seq[a_num_bytes + b_num_bytes - 1] = byte_revcom_table[b_seq[0]] << 4;
+    c_seq[a_num_bytes + b_num_bytes - 1] = byte_revcomp_table[b_seq[0]] << 4;
     // Here, c_seq is either [ aa aa aa aa bb bb bb b- ] (a even; b odd)
     //                    or [ aa aa aa ab bb bb bb b- ] (a odd; b odd)
   }
   else {
     for (size_t i = 0; i < b_num_bytes - b_offset; i++) {
       c_seq[a_num_bytes + i] =
-          byte_revcom_table[b_seq[b_num_bytes - i - 1 - b_offset]];
+          byte_revcomp_table[b_seq[b_num_bytes - i - 1 - b_offset]];
     }
     // Here, c_seq is either [ aa aa aa aa bb bb bb bb ] (a even and b even)
     //                    or [ aa aa aa ab bb bb bb    ] (a odd and b odd)
@@ -347,22 +318,14 @@ merge_by_byte(const bam_rec &a, const bam_rec &b, bam_rec &c) {
 }
 
 
-
-static inline bool
-format_is_bam_or_sam(htsFile *hts) {
-  const htsFormat *fmt = hts_get_format(hts);
-  return fmt->category == sequence_data &&
-         (fmt->format == bam || fmt->format == sam);
-}
-
 static void
 flip_conversion(bam_rec &aln) {
-  if (aln.record->core.flag & BAM_FREVERSE)
-    aln.record->core.flag = aln.record->core.flag & (~BAM_FREVERSE);
+  if (aln.flag() & BAM_FREVERSE)
+    aln.flag() = aln.flag() & (~BAM_FREVERSE);
   else
-    aln.record->core.flag = aln.record->core.flag | BAM_FREVERSE;
+    aln.flag() = aln.flag() | BAM_FREVERSE;
 
-  revcomp_seq_by_byte(aln);
+  aln.revcomp();
 
   // ADS: don't like *(cv + 1) below, but no HTSlib function for it?
   uint8_t *cv = bam_aux_get(aln.record, "CV");
@@ -408,7 +371,7 @@ truncate_overlap(const bam_rec &a, const uint32_t overlap, bam_rec &c) {
 
   // flag only needs to worry about strand and single-end stuff
   const uint16_t flag =
-      a.record->core.flag & (BAM_FREAD1 | BAM_FREAD2 | BAM_FREVERSE);
+      a.flag() & (BAM_FREAD1 | BAM_FREAD2 | BAM_FREVERSE);
 
   int ret = 
     bam_set1_wrapper(c,
@@ -507,7 +470,7 @@ merge_overlap(const bam_rec &a, const bam_rec &b,
   const hts_pos_t isize = bam_cigar2rlen(c_ops, c_cig);
 
   // flag only needs to worry about strand and single-end stuff
-  uint16_t flag = (a.record->core.flag & (BAM_FREAD1 |
+  uint16_t flag = (a.flag() & (BAM_FREAD1 |
                                           BAM_FREAD2 |
                                           BAM_FREVERSE));
 
@@ -571,7 +534,7 @@ merge_non_overlap(const bam_rec &a, const bam_rec &b,
   const hts_pos_t isize = bam_cigar2rlen(c_ops, c_cig);
 
   // flag: only need to keep strand and single-end info
-  const uint16_t flag = a.record->core.flag & (BAM_FREAD1 |
+  const uint16_t flag = a.flag() & (BAM_FREAD1 |
                                                BAM_FREAD2 |
                                                BAM_FREVERSE);
 
@@ -618,7 +581,7 @@ keep_better_end(const bam_rec &a, const bam_rec &b, bam_rec &c) {
   c.record->core.mtid = -1;
   c.record->core.mpos = -1;
   c.record->core.isize = c.rlen_from_cigar();
-  c.record->core.flag &= (BAM_FREAD1 | BAM_FREAD2 | BAM_FREVERSE);
+  c.flag() &= (BAM_FREAD1 | BAM_FREAD2 | BAM_FREVERSE);
   return 0;
 }
 
@@ -755,7 +718,7 @@ standardize_format(const string &input_format, bam_rec &aln) {
     if (err_code < 0) throw dnmt_error(err_code, "bam_aux_append");
 
     if (bam_is_rev(aln.record))
-      revcomp_seq_by_byte(aln); // reverse complement if needed
+      aln.revcomp(); // reverse complement if needed
   }
   if (input_format == "bismark") {
     // ADS: Previously we modified the read names at the first
@@ -783,7 +746,7 @@ standardize_format(const string &input_format, bam_rec &aln) {
     if (err_code < 0) throw dnmt_error(err_code, "bam_aux_append");
 
     if (bam_is_rev(aln.record))
-      revcomp_seq_by_byte(aln); // reverse complement if needed
+      aln.revcomp(); // reverse complement if needed
   }
 
   // Be sure this doesn't depend on mapper! Removes the "qual" part of
@@ -917,42 +880,34 @@ check_sorted(const string &inputfile, const size_t suff_len, size_t n_reads) {
 
 static bool
 check_input_file(const string &infile) {
-  samFile* hts = hts_open(infile.c_str(), "r");
-  if (!hts || errno) throw dnmt_error("error opening: " + infile);
-  const htsFormat *fmt = hts_get_format(hts);
-  if (fmt->category != sequence_data)
+  bam_infile hts(infile);
+  if (!hts) throw dnmt_error("error opening: " + infile);
+  if (hts.fmt->category != sequence_data)
     throw dnmt_error("not sequence data: " + infile);
-  if (fmt->format != bam && fmt->format != sam)
+  if (!hts.is_bam_or_sam())
     throw dnmt_error("not SAM/BAM format: " + infile);
 
-  const int err_code = hts_close(hts);
-  if (err_code < 0) throw dnmt_error(err_code, "check_input_file:hts_close");
-
+  //const int err_code = hts_close(hts);
+  //if (err_code < 0) throw dnmt_error(err_code, "check_input_file:hts_close");
   return true;
 }
 
 static bool
 check_format_in_header(const string &input_format, const string &inputfile) {
-  samFile* hts = hts_open(inputfile.c_str(), "r");
+  bam_infile hts(inputfile);
   if (!hts) throw dnmt_error("error opening file: " + inputfile);
 
-  sam_hdr_t *hdr = sam_hdr_read(hts);
-  if (!hdr) throw dnmt_error("failed to read header: " + inputfile);
+  bam_header hdr(hts.file->bam_header);
 
-  auto begin_hdr = sam_hdr_str(hdr);
-  auto end_hdr = begin_hdr + std::strlen(begin_hdr);
-  auto it = std::search(begin_hdr, end_hdr,
-                        begin(input_format), end(input_format),
+  string hdr_str = hdr.get_str();
+  auto it = std::search(hdr_str.begin(), hdr_str.end(),
+                        input_format.begin(), input_format.end(),
                         [](const unsigned char a, const unsigned char b) {
                           return std::toupper(a) == std::toupper(b);
                         });
-  bam_hdr_destroy(hdr);
-  const int err_code = hts_close(hts);
-  if (err_code < 0) throw dnmt_error(err_code, "check_format_in_header:hts_close");
 
-  return it != end_hdr;
+  return it != hdr_str.end();
 }
-
 
 static bool
 same_name(const bam_rec &a, const bam_rec &b, const size_t suff_len) {
