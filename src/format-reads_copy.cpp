@@ -61,21 +61,35 @@ using std::endl;
 using std::string;
 using std::vector;
 
+const uint32_t cins = 1;  // copied from sam.h
+const uint32_t csoft_clip = 4; // copied from sam.h
+const uint32_t cigar_op_mask = 0xf; // copied from sam.h
+const uint32_t cigar_type_mask = 0x3C1A7; // copied from sam.h
 
 
+static inline uint32_t
+cigar_op(const uint32_t c) {
+  return c & cigar_op_mask; 
+}
 
-
-
+static inline uint32_t
+cigar_type(const uint32_t c) {
+  return cigar_type_mask >> ( cigar_op(c) << 1) & 3;
+}
 
 static inline bool
-eats_ref(const uint32_t c) { return bam_cigar_type(bam_cigar_op(c)) & 2; }
+eats_ref(const uint32_t c) { 
+  return cigar_type(c) & 2;
+}
 
 static inline bool
-eats_query(const uint32_t c) { return bam_cigar_type(bam_cigar_op(c)) & 1; }
+eats_query(const uint32_t c) { 
+  return cigar_type(c) & 1;
+}
 
 static inline uint32_t
 to_insertion(const uint32_t x) {
-  return (x & ~BAM_CIGAR_MASK) | BAM_CINS;
+  return (x & ~cigar_op_mask) | cins;
 }
 
 static void
@@ -92,13 +106,13 @@ fix_internal_softclip(const size_t n_cigar, uint32_t *cigar) {
   if (c_beg == c_end) throw dnmt_error("cigar eats no ref");
 
   for (auto c_itr = c_beg; c_itr != c_end; ++c_itr)
-    if (bam_cigar_op(*c_itr) == BAM_CSOFT_CLIP)
+    if ((*c_itr & cigar_op_mask) == csoft_clip)
       *c_itr = to_insertion(*c_itr);
 }
 
 static inline uint32_t
 to_softclip(const uint32_t x) {
-  return (x & ~BAM_CIGAR_MASK) | BAM_CSOFT_CLIP;
+  return (x & ~cigar_op_mask) | csoft_clip;
 }
 
 static void

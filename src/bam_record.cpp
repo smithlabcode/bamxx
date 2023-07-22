@@ -210,7 +210,11 @@ bam_infile::is_bam_or_sam() {
 
 
 
+
 /*  Functions needed for bam_set1_wrapper begin */
+/*  Functions needed for bam_set1_wrapper begin */
+/*  Functions needed for bam_set1_wrapper begin */
+
 static inline void
 roundup_to_power_of_2(uint32_t &x) {
   bool k_high_bit_set = (x >> (sizeof(uint32_t) * 8 - 1)) & 1;
@@ -340,6 +344,8 @@ bam_set1_wrapper(bam_rec &bam,
 }
 
 
+/*  Functions needed for bam_set1_wrapper end */
+/*  Functions needed for bam_set1_wrapper end */
 /*  Functions needed for bam_set1_wrapper end */
 
 
