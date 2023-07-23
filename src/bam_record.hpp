@@ -45,10 +45,17 @@ public:
   }
 
 
-  inline std::string
+  std::string
   target_name(const int32_t tid) {
     return header->target_name[tid];
   }
+
+  std::string
+  get_str() const {
+    return sam_hdr_str(header);
+  }
+
+
 
   // MN: This is under construction. Do not use this. 
   int
@@ -124,6 +131,16 @@ public:
   const hts_pos_t &
   pos() const {
     return record->core.pos;
+  }
+
+  uint16_t &
+  flag() {
+    return record->core.flag;
+  }
+
+  const uint16_t &
+  flag() const {
+    return record->core.flag;
   }
 
   int32_t &
@@ -219,6 +236,9 @@ public:
   is_rev() const;
 
   void
+  revcomp(); // Reverse-complement the sequence in place.
+
+  void
   write_cigar(std::stringstream &ss) const;
 
   void
@@ -239,6 +259,16 @@ public:
   bam1_t *record;
 };
 
+
+int
+bam_set1_wrapper(bam_rec &bam,
+                 const size_t l_qname, const char *qname,
+                 const uint16_t flag, const int32_t tid,
+                 const hts_pos_t pos, const uint8_t mapq,
+                 const size_t n_cigar, const uint32_t *cigar,
+                 const int32_t mtid, const hts_pos_t mpos,
+                 const hts_pos_t isize, const size_t l_seq,
+                 const size_t l_aux);
 
 inline void
 swap(bam_rec &a, bam_rec &b) {
