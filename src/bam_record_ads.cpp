@@ -179,6 +179,11 @@ bam_rec::is_rev() const {
   return (record->core.flag & freverse) != 0;
 }
 
+bool
+bam_rec::is_a_rich() const { 
+  return bam_aux2A(bam_aux_get(record, "CV")) == 'A'; 
+}
+
 string
 bam_rec::tostring(const sam_hdr_t *const hdr) const {
   kstring_t s = KS_INITIALIZE;
@@ -261,6 +266,107 @@ bam_rec::revcomp() {
     seq[num_bytes - 1] <<= 4;
   }
 }
+
+
+
+
+static inline void
+bam_set1_core(bam1_core_t &core,
+              const size_t l_qname, const uint16_t flag, const int32_t tid,
+              const hts_pos_t pos, const uint8_t mapq, const size_t n_cigar,
+              const int32_t mtid, const hts_pos_t mpos, const hts_pos_t isize,
+              const size_t l_seq, const size_t qname_nuls) {
+  /* ADS: These are used in `hts_reg2bin` from `htslib/hts.h` and
+     likely mean "region to bin" for indexing */
+  /* MN: hts_reg2bin categorizes the size of the reference region.
+     Here, we use the numbers used in htslib/cram/cram_samtools.h */
+  static const int min_shift = 14;
+  static const int n_lvls = 5;
+
+  core.pos = pos;
+  core.tid = tid;
+  core.bin = hts_reg2bin(pos, pos + isize, min_shift, n_lvls);
+  core.qual = mapq;
+  core.l_extranul = qname_nuls - 1;
+  core.flag = flag;
+  core.l_qname = l_qname + qname_nuls;
+  core.n_cigar = n_cigar;
+  core.l_qseq = l_seq;
+  core.mtid = mtid;
+  core.mpos = mpos;
+  core.isize = isize;
+}
+
+int
+bam_set1_wrapper(bam1_t *bam,
+                 const size_t l_qname, const char *qname,
+                 const uint16_t flag, const int32_t tid,
+                 const hts_pos_t pos, const uint8_t mapq,
+                 const size_t n_cigar, const uint32_t *cigar,
+                 const int32_t mtid, const hts_pos_t mpos,
+                 const hts_pos_t isize, const size_t l_seq,
+                 const size_t l_aux) {
+  /* This is based on how assignment is done in the `bam_set1`
+     function defined in `sam.c` from htslib */
+
+  /*
+   * This modification assigns variables of bam1_t struct but not the sequence.
+   *
+   * Many checks have been removed because they are checked in code
+   * that calls this function, mostly because they already come from a
+   * valid `bam1_t` struct and so the values have been individually
+   * validated.
+   *
+   * Assumptions:
+   * cigar has been computed and is in the right format
+   * rlen = isize
+   * qlen = l_seq
+   * l_qname <= 254
+   * HTS_POS_MAX - rlen > pos
+   * Where HTS_POS_MAX = ((((int64_t)INT_MAX)<<32)|INT_MAX) is the highest
+   * supported position.
+   *
+   * Number of bytes needed for the data is smaller than INT32_MAX
+   *
+   * qual = NULL, because we do not keep the quality scores through
+   * formatting the reads.
+   */
+
+  // `qname_nuls` below is the number of '\0' to use to pad the qname
+  // so that the cigar has 4-byte alignment.
+  const size_t qname_nuls = 4 - l_qname % 4;
+  bam_set1_core(bam->core, l_qname, flag, tid, pos, mapq, n_cigar,
+                mtid, mpos, isize, l_seq, qname_nuls);
+
+  const size_t data_len =
+    (l_qname + qname_nuls + n_cigar*sizeof(uint32_t) + (l_seq + 1) / 2 + l_seq);
+
+  bam->l_data = data_len;
+  if (data_len + l_aux > bam->m_data) {
+    const int ret = sam_realloc_bam_data(bam, data_len + l_aux);
+    if (ret < 0) {
+      throw runtime_error("Failed to allocate memory for BAM record");
+    }
+  }
+  auto data_iter = bam->data;
+
+  std::copy_n(qname, l_qname, data_iter);
+  std::fill_n(data_iter + l_qname, qname_nuls, '\0');
+  data_iter += l_qname + qname_nuls;
+
+  // ADS: reinterpret here because we know the cigar is originally an
+  // array of uint32_t and has been aligned for efficiency
+  std::copy_n(cigar, n_cigar, reinterpret_cast<uint32_t *>(data_iter));
+  data_iter += n_cigar * sizeof(uint32_t);
+
+  // skipping sequece assignment
+  data_iter += (l_seq + 1) / 2;
+
+  std::fill(data_iter, data_iter + l_seq, '\xff');
+
+  return static_cast<int>(data_len);
+}
+
 
 
 

@@ -203,8 +203,8 @@ public:
   int32_t tid() const { return record->core.tid; }
 
   // indirect accessors
-  bool is_a_rich() const;
   bool is_rev() const;
+  bool is_a_rich() const;
   std::string tostring(const sam_hdr_t *const hdr) const;
 
   // ADS: non-member function to take the data from a struct and be
@@ -245,5 +245,15 @@ private:
 
   hts_pos_t &mpos() { return record->core.mpos; }
 };
+
+int
+bam_set1_wrapper(bam1_t *bam,
+                 const size_t l_qname, const char *qname,
+                 const uint16_t flag, const int32_t tid,
+                 const hts_pos_t pos, const uint8_t mapq,
+                 const size_t n_cigar, const uint32_t *cigar,
+                 const int32_t mtid, const hts_pos_t mpos,
+                 const hts_pos_t isize, const size_t l_seq,
+                 const size_t l_aux);
 
 #endif

@@ -31,9 +31,11 @@ public:
   }
 
   const sam_hdr_t *const get_hdr() const { return hdr; };
+  //MN: temporary solution
+  sam_hdr_t * get_hdr_nonconst() { return hdr; };
 
   samFile *const get_fp() const { return fp; };
-  samFile *get_fp() { return fp; };
+  samFile *get_ptr() { return fp; };
 
   bam_infile &get_bam_rec(bam_rec &br) {
     if (error_code) return *this; // already in error; do nothing

@@ -23,7 +23,7 @@ public:
   }
 
   samFile *const get_fp() const { return fp; };
-  samFile *get_fp() { return fp; };
+  samFile *get_ptr() { return fp; };
 
   bam_outfile(const std::string &filename, const sam_hdr_t *const init_hdr,
               const bool bam_fmt = false) {
