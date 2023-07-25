@@ -5,7 +5,7 @@
 
 #include <htslib/sam.h>
 
-#include "bam_record.hpp"
+#include "bam_record_ads.hpp"
 
 class bam_infile {
 public:
@@ -33,6 +33,7 @@ public:
   const sam_hdr_t *const get_hdr() const { return hdr; };
 
   samFile *const get_fp() const { return fp; };
+  samFile *get_fp() { return fp; };
 
   bam_infile &get_bam_rec(bam_rec &br) {
     if (error_code) return *this; // already in error; do nothing

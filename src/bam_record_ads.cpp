@@ -1,7 +1,7 @@
 // from HTSlib
 #include <htslib/sam.h>
 
-#include "bam_record.hpp"
+#include "bam_record_ads.hpp"
 
 #include <algorithm>
 #include <cstdarg>
@@ -24,6 +24,11 @@ using std::fill_n;
 
 using std::cerr;
 using std::endl;
+
+
+
+
+const uint16_t freverse = 16;
 
 template<typename T> bool
 high_bit_set(T x) {
@@ -63,8 +68,8 @@ sam_realloc_bam_data(bam1_t *b, size_t desired) {
     new_data = static_cast<uint8_t *>(malloc(new_m_data));
     if (new_data != nullptr) {
       if (b->l_data > 0)
-        copy_n(new_data, (b->l_data < b->m_data) ? b->l_data : b->m_data,
-               b->data);
+        copy_n(new_data, (static_cast<uint32_t>(b->l_data) < b->m_data) ? 
+            b->l_data : b->m_data, b->data);
       bam_set_mempolicy(b, bam_get_mempolicy(b) & (~BAM_USER_OWNS_DATA));
     }
   }
@@ -97,8 +102,9 @@ set_qseq_internal(const string &s, bam1_t *b) {
   auto dat_itr = bam_get_seq(b);
   size_t i = 0;
   for (; i + 1 < s.size(); i += 2)
-    *dat_itr++ = (seq_nt16_table[s[i]] << 4) | seq_nt16_table[s[i + 1]];
-  if (i < s.size()) *dat_itr++ = seq_nt16_table[s[i]] << 4;
+    *dat_itr++ = (seq_nt16_table[static_cast<uint8_t>(s[i] << 4)]) | 
+      seq_nt16_table[static_cast<uint8_t>(s[i + 1])];
+  if (i < s.size()) *dat_itr++ = seq_nt16_table[static_cast<uint8_t>(s[i])] << 4;
 
   b->core.l_qseq = s.size(); // assign the query sequence length
   b->l_data += delta_bytes;  // update total data size
@@ -149,7 +155,7 @@ bam_rec::validate(const sam_hdr_t *const hdr) const {
   if (!(record->core.mpos < sam_hdr_tid2len(hdr, mtid()))) return false;
 
   // cigar and qseq are consistent
-  if (!(l_qseq() == qlen_from_cigar())) return false;
+  if (!(static_cast<size_t>(get_l_qseq()) == qlen_from_cigar())) return false;
 
   // ensure that the space allocated for qual is consistent with qlen;
   // this can't be done directly without examining the possible
@@ -162,9 +168,15 @@ bam_rec::validate(const sam_hdr_t *const hdr) const {
   return true;
 }
 
-string
-bam_rec::tostring(const bam_header &hdr) const {
-  return tostring(hdr.h);
+// MN: commented below since I coult not find corresponding function.
+//string
+//bam_rec::tostring(const bam_header &hdr) const {
+  //return tostring(hdr.h);
+//}
+
+bool
+bam_rec::is_rev() const {
+  return (record->core.flag & freverse) != 0;
 }
 
 string
@@ -189,3 +201,66 @@ bam_rec::tostring(const sam_hdr_t *const hdr) const {
   free(s.s);
   return r;
 }
+
+
+/* This table converts 2 bases packed in a byte to their reverse
+ * complement. The input is therefore a unit8_t representing 2 bases.
+ * It is assumed that the input uint8_t value is of form "xx" or "x-",
+ * where 'x' a 4-bit number representing either A, C, G, T, or N and
+ * '-' is 0000.  For example, the ouptut for "AG" is "CT". The format
+ * "x-" is often used at the end of an odd-length sequence.  The
+ * output of "A-" is "-T", and the output of "C-" is "-G", and so
+ * forth. The user must handle this case separately.
+ */
+const uint8_t byte_revcomp_table[] = {
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  8, 136, 72, 0, 40, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 248,
+  4, 132, 68, 0, 36, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 244,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  2, 130, 66, 0, 34, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 242,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  1, 129, 65, 0, 33, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 241,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+  0,   0,  0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0,   0,
+ 15, 143, 79, 0, 47, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 255
+};
+
+
+static inline void
+revcomp_byte_then_reverse(uint8_t *a, uint8_t *b) {
+  uint8_t *p1, *p2;
+  for (p1 = a, p2 = b - 1; p2 > p1; ++p1, --p2) {
+    *p1 = byte_revcomp_table[*p1];
+    *p2 = byte_revcomp_table[*p2];
+    *p1 ^= *p2;
+    *p2 ^= *p1;
+    *p1 ^= *p2;
+  }
+  if (p1 == p2) *p1 = byte_revcomp_table[*p1];
+}
+
+void
+bam_rec::revcomp() {
+  const size_t l_qseq = bam_rec::get_l_qseq();
+  auto seq = bam_rec::get_qseq();
+  const size_t num_bytes = (l_qseq + 1) / 2;
+  auto seq_end = seq + num_bytes;
+  revcomp_byte_then_reverse(seq, seq_end);
+  if (l_qseq % 2 == 1) { // for odd-length sequences
+    for (size_t i = 0; i < num_bytes - 1; i++) {
+      // swap 4-bit chunks within consecutive bytes like this:
+      // (----aaaa bbbbcccc dddd....) => (aaaabbbb ccccdddd ....)
+      seq[i] = (seq[i] << 4) | (seq[i + 1] >> 4);
+    }
+    seq[num_bytes - 1] <<= 4;
+  }
+}
+
+
+

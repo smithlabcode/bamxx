@@ -5,7 +5,7 @@
 
 #include <htslib/sam.h>
 
-#include "bam_record.hpp"
+#include "bam_record_ads.hpp"
 
 class bam_outfile {
 public:
@@ -21,6 +21,9 @@ public:
       hdr = nullptr;
     }
   }
+
+  samFile *const get_fp() const { return fp; };
+  samFile *get_fp() { return fp; };
 
   bam_outfile(const std::string &filename, const sam_hdr_t *const init_hdr,
               const bool bam_fmt = false) {

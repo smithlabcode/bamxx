@@ -67,13 +67,20 @@ public:
   /// Functions currently used here at the top
 
   // Get the length of the query sequence
-  int32_t l_qseq() const { return record->core.l_qseq; }
+  const int32_t get_l_qseq() const { return record->core.l_qseq; }
+  // MN: copied from format-reads. Need to understand why this expression.
+  const int32_t get_m_qname() const { 
+    return record->core.l_qname - (record->core.l_extranul + 1); 
+  }
+
 
   void set_seq(const std::string &s);
   void set_seq(const std::string &s, const std::string &q);
   void set_cigar(const size_t updated_n_cigar, const uint32_t *c);
 
   const bam1_t &get_rec() const { return *record; }
+  bam1_t *get_ptr() { return record; }
+  //MN: remporary accessor
 
   int l_data() const { return record->l_data; }
 
@@ -111,6 +118,7 @@ public:
   const size_t l_aux() const { return bam_get_l_aux(record); }
 
   std::string qname() const { return bam_get_qname(record); }
+  char *qname_ptr() const { return bam_get_qname(record); }
 
   // ADS: use cigar to get `qlen`: length of query sequence
   size_t qlen_from_cigar() const {
@@ -206,6 +214,8 @@ public:
     br.record = aln;
     aln = nullptr;
   }
+
+  void revcomp();
 private:
   bam1_t *record;
 
