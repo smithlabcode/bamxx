@@ -84,9 +84,9 @@ public:
 
   int l_data() const { return record->l_data; }
 
-  hts_pos_t pos() const { return record->core.pos; }
+  hts_pos_t get_pos() const { return record->core.pos; }
 
-  hts_pos_t mpos() const { return record->core.mpos; }
+  hts_pos_t get_mpos() const { return record->core.mpos; }
 
   // Get the pointer to the cigar portion of the record.
   uint32_t *get_cigar() {
@@ -198,9 +198,9 @@ public:
     }
   }
 
-  int32_t mtid() const { return record->core.mtid; }
+  int32_t get_mtid() const { return record->core.mtid; }
 
-  int32_t tid() const { return record->core.tid; }
+  int32_t get_tid() const { return record->core.tid; }
 
   // indirect accessors
   bool is_rev() const;

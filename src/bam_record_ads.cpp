@@ -151,8 +151,8 @@ bam_rec::validate(const sam_hdr_t *const hdr) const {
   // TODO: check SAM standard to ensure that mtid is valid
 
   // ensure that the mapping location is consistent with the rlen
-  if (!(record->core.pos < sam_hdr_tid2len(hdr, tid()))) return false;
-  if (!(record->core.mpos < sam_hdr_tid2len(hdr, mtid()))) return false;
+  if (!(record->core.pos < sam_hdr_tid2len(hdr, get_tid()))) return false;
+  if (!(record->core.mpos < sam_hdr_tid2len(hdr, get_mtid()))) return false;
 
   // cigar and qseq are consistent
   if (!(static_cast<size_t>(get_l_qseq()) == qlen_from_cigar())) return false;
