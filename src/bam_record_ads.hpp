@@ -79,14 +79,27 @@ public:
   void set_cigar(const size_t updated_n_cigar, const uint32_t *c);
 
   const bam1_t &get_rec() const { return *record; }
+
+  //MN: temporary accessor
   bam1_t *get_ptr() { return record; }
-  //MN: remporary accessor
+  //MN: temporary accessor
+  bam1_t *&get_ptr_ref() { return record; }
+  //MN: temporary accessor
+  const bam1_t *get_ptr_const() const { return record; }
 
   int l_data() const { return record->l_data; }
 
   hts_pos_t get_pos() const { return record->core.pos; }
 
   hts_pos_t get_mpos() const { return record->core.mpos; }
+
+  uint32_t get_n_cigar() const { return record->core.n_cigar; }
+
+  uint16_t get_flag() const {return record->core.flag; }
+
+  uint16_t get_l_qname() const {return record->core.l_qname;}
+
+  uint16_t get_qual() const {return record->core.qual;}
 
   // Get the pointer to the cigar portion of the record.
   uint32_t *get_cigar() {
@@ -98,6 +111,7 @@ public:
   const uint32_t *get_cigar() const {
     return reinterpret_cast<uint32_t *>(record->data + record->core.l_qname);
   }
+
 
   // ADS: not sure we should have this function, as we don't want to
   // change this without actually changing the cigar itself.
@@ -131,7 +145,7 @@ public:
   }
 
   // ADS: seems like this is `pos + rlen`??
-  hts_pos_t endpos() const { return bam_endpos(record); }
+  hts_pos_t get_endpos() const { return bam_endpos(record); }
 
   /* AUX FIELDS */
   template<typename T> void aux_update_int(const char tag[2], const T val) {
@@ -202,6 +216,7 @@ public:
 
   int32_t get_tid() const { return record->core.tid; }
 
+
   // indirect accessors
   bool is_rev() const;
   bool is_a_rich() const;
@@ -222,7 +237,6 @@ private:
 
   uint32_t &n_cigar() { return record->core.n_cigar; }
 
-  const uint32_t &n_cigar() const { return record->core.n_cigar; }
 
   // Get the pointer to the aux part of the bam record.
   uint8_t *get_aux() { return get_qual() + record->core.l_qseq; }
@@ -245,6 +259,10 @@ private:
   int32_t &l_qseq() { return record->core.l_qseq; }
 
   hts_pos_t &mpos() { return record->core.mpos; }
+
+  hts_pos_t &isize() { return record->core.isize; }
+
+  uint16_t &flag() {return record->core.flag; } 
 };
 
 int
