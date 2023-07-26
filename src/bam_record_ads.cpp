@@ -269,6 +269,21 @@ bam_rec::revcomp() {
 
 
 
+void
+bam_rec::flip() {
+  if (bam_rec::is_rev())
+    record->core.flag = record->core.flag & (~BAM_FREVERSE);
+  else
+    record->core.flag = record->core.flag | BAM_FREVERSE;
+
+  bam_rec::revcomp();
+
+  // ADS: don't like *(cv + 1) below, but no HTSlib function for it?
+  uint8_t *cv = bam_aux_get(record, "CV");
+  if (!cv) throw runtime_error("bam_aux_get failed for CV");
+  *(cv + 1) = 'T';
+}
+
 
 static inline void
 bam_set1_core(bam1_core_t &core,

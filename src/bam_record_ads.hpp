@@ -216,6 +216,7 @@ public:
   }
 
   void revcomp();
+  void flip();
 private:
   bam1_t *record;
 
