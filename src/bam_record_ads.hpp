@@ -86,6 +86,10 @@ public:
   bam1_t *&get_ptr_ref() { return record; }
   //MN: temporary accessor
   const bam1_t *get_ptr_const() const { return record; }
+  //MN: temporary accessor
+  const uint8_t *get_data_end() const {
+    return bam_get_aux(record) + bam_get_l_aux(record);
+  }
 
   int l_data() const { return record->l_data; }
 
@@ -121,7 +125,9 @@ public:
     return record->data + (record->core.n_cigar << 2) + record->core.l_qname;
   }
 
-  const uint8_t *get_qseq() const { return get_qseq(); }
+  const uint8_t *get_qseq_const() const { 
+    return record->data + (record->core.n_cigar << 2) + record->core.l_qname;
+  }
 
   // ADS: likely should be a private function. We likely don't want to
   // allow users to change anything inside there without using a

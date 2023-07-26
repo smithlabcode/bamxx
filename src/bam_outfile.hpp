@@ -25,13 +25,13 @@ public:
   samFile *const get_fp() const { return fp; };
   samFile *get_ptr() { return fp; };
 
-  bam_outfile(const std::string &filename, const sam_hdr_t *const init_hdr,
+  bam_outfile(const std::string &filename, const bam_header &init_hdr,
               const bool bam_fmt = false) {
     if (init_hdr) {
       fp = hts_open(filename.c_str(), (bam_fmt ? "bw" : "w"));
       error_code = (fp) ? 0 : -1;
       if (!error_code) {
-        hdr = sam_hdr_dup(init_hdr);
+        hdr = sam_hdr_dup(init_hdr.h);
         if (!hdr)
           error_code = -2;
         else {
