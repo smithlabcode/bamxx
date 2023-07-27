@@ -91,7 +91,7 @@ sam_realloc_bam_data(bam1_t *b, size_t desired) {
     if (new_data != nullptr) {
       if (b->l_data > 0)
         copy_n(new_data, (static_cast<uint32_t>(b->l_data) < b->m_data) ?
-            b->l_data : b->m_data, b->data);
+               b->l_data : b->m_data, b->data);
       bam_set_mempolicy(b, bam_get_mempolicy(b) & (~BAM_USER_OWNS_DATA));
     }
   }
@@ -193,7 +193,7 @@ bam_rec::validate(const sam_hdr_t *const hdr) const {
 // MN: commented below since I coult not find corresponding function.
 //string
 //bam_rec::tostring(const bam_header &hdr) const {
-  //return tostring(hdr.h);
+//return tostring(hdr.h);
 //}
 
 bool
@@ -405,11 +405,11 @@ bam_set1_core(bam1_core_t &core,
 // }
 
 void
-bam_record::aux_update_str(const char tag[2], const uint8_t tag_type,
-                           const string &data) {
+bam_rec::aux_update_str(const char tag[2], const uint8_t tag_type,
+                        const string &data) {
   const size_t data_sz = data.size() + 1;
-    vector<char> tmp_data(data_sz, 0);
-    copy(begin(data), end(data), begin(tmp_data));
-    const int ret = bam_aux_update_str(record, tag, data_sz, tmp_data.data());
-    if (ret < 0) throw runtime_error("fail aux_update_str");
+  vector<char> tmp_data(data_sz, 0);
+  copy(begin(data), end(data), begin(tmp_data));
+  const int ret = bam_aux_update_str(record, tag, data_sz, tmp_data.data());
+  if (ret < 0) throw runtime_error("fail aux_update_str");
 }
