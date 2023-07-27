@@ -49,6 +49,8 @@ struct bam_header {
                                      "CL", cmdline.c_str(), nullptr);
     if (ret != 0) throw std::runtime_error("fail sam_hdr_add_program");
   }
+  std::string tostring() const { return sam_hdr_str(h); }
+  int32_t get_n_targets() const { return h->n_targets; }
   sam_hdr_t *h{};
 };
 
