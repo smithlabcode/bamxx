@@ -80,8 +80,8 @@ public:
   }
   bool is_mapped_reads_file() const {
     const htsFormat *fmt = hts_get_format(fp);
-    return fmt->category != sequence_data &&
-      (fmt->format == bam && fmt->format == sam);
+    return fmt->category == sequence_data &&
+      (fmt->format == bam || fmt->format == sam);
   }
 
   operator bool() const { return (error_code == 0); }
