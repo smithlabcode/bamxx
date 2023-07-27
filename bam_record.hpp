@@ -189,14 +189,7 @@ public:
     if (ret < 0) throw std::runtime_error("fail append_aux");
   }
 
-  void append_aux(const char tag[2], const char aux_type,
-                  const std::string &s) {
-    const size_t sz = s.size() + 1; // for the '\0'
-    std::vector<uint8_t> data(sz, 0);
-    std::copy(begin(s), end(s), begin(data));
-    const int ret = bam_aux_append(record, tag, aux_type, sz, data.data());
-    if (ret < 0) throw std::runtime_error("fail append_aux");
-  }
+  void append_aux(const char tag[2], const char aux_type, const std::string &s);
 
   template<typename T>
   void append_aux(const char tag[2], const char aux_type, T dat) {
@@ -205,13 +198,7 @@ public:
     if (ret < 0) throw std::runtime_error("fail append_aux");
   }
 
-  void remove_aux(const char tag[2]) {
-    auto the_aux = bam_aux_get(record, tag);
-    if (the_aux != nullptr) {
-      const int ret = bam_aux_del(record, the_aux);
-      if (ret != 0) throw std::runtime_error("fail remove_aux");
-    }
-  }
+  void remove_aux(const char tag[2]);
 
   int32_t get_mtid() const { return record->core.mtid; }
 

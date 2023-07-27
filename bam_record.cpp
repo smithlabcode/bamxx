@@ -413,3 +413,24 @@ bam_rec::aux_update_str(const char tag[2], const uint8_t tag_type,
   const int ret = bam_aux_update_str(record, tag, data_sz, tmp_data.data());
   if (ret < 0) throw runtime_error("fail aux_update_str");
 }
+
+
+void
+bam_rec::append_aux(const char tag[2], const char aux_type,
+                    const std::string &s) {
+  // ADS: unless its a speed bottleneck this function is better here
+  const size_t sz = s.size() + 1;  // for the '\0'
+  std::vector<uint8_t> data(sz, 0);
+  std::copy(begin(s), end(s), begin(data));
+  const int ret = bam_aux_append(record, tag, aux_type, sz, data.data());
+  if (ret < 0) throw std::runtime_error("fail append_aux");
+}
+
+void
+bam_rec::remove_aux(const char tag[2]) {
+  auto the_aux = bam_aux_get(record, tag);
+  if (the_aux != nullptr) {
+    const int ret = bam_aux_del(record, the_aux);
+    if (ret != 0) throw std::runtime_error("fail remove_aux");
+  }
+}
