@@ -51,31 +51,32 @@ using std::endl;
 
 const uint16_t freverse = 16;
 
-template<typename T> bool
+template<typename T> static bool
 high_bit_set(T x) {
   return (x >> (sizeof(T) * 8 - 1 - std::is_signed<decltype(x)>::value)) & 1;
 }
 
-/*! @hideinitializer
-  @abstract  Round up to next power of two
-  @discussion
-  This macro will work for unsigned types up to uint64_t.
-
-  If the next power of two does not fit in the given type, it will set
-  the largest value that does.
- */
-#define x_kroundup64(x)                                                        \
-  ((x) > 0 ? (--(x), (x) |= (x) >> (sizeof(x) / 8),                            \
-              (x) |= (x) >> (sizeof(x) / 4), (x) |= (x) >> (sizeof(x) / 2),    \
-              (x) |= (x) >> (sizeof(x)), (x) |= (x) >> (sizeof(x) * 2),        \
-              (x) |= (x) >> (sizeof(x) * 4), (x) += !high_bit_set(x), (x))     \
-           : 0)
+static inline void
+roundup_to_power_of_2(uint32_t &x) {
+  bool k_high_bit_set = (x >> (sizeof(uint32_t) * 8 - 1)) & 1;
+  if (x > 0) {
+    uint8_t size = sizeof(uint32_t);
+    --x;
+    x |= x >> (size / 4);
+    x |= x >> (size / 2);
+    x |= x >> (size);
+    x |= x >> (size * 2);
+    x |= x >> (size * 4);
+    x += !k_high_bit_set;
+  }
+  else x = 0;
+}
 
 // From sam.c in htslib. Seems not used anywhere and not in any interface.
-static int
+int
 sam_realloc_bam_data(bam1_t *b, size_t desired) {
   uint32_t new_m_data = desired;
-  x_kroundup64(new_m_data);
+  roundup_to_power_of_2(new_m_data);
   if (new_m_data < desired) {
     errno = ENOMEM; // (from sam.c) Not strictly true but we can't
                     // store the size
