@@ -1,2 +1,2 @@
-# htslibcpp
-HTSlib wrapper (mostly for BAM/SAM) in C++.
+# htslibxx
+A simple wrapper for HTSlib mapped reads files (BAM/SAM) in C++.
