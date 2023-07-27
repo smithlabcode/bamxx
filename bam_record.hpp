@@ -175,13 +175,7 @@ public:
   }
 
   void aux_update_str(const char tag[2], const uint8_t tag_type,
-                      const std::string &data) {
-    const size_t data_sz = data.size() + 1;
-    std::vector<char> tmp_data(data_sz, 0);
-    std::copy(begin(data), end(data), begin(tmp_data));
-    const int ret = bam_aux_update_str(record, tag, data_sz, tmp_data.data());
-    if (ret < 0) throw std::runtime_error("fail aux_update_str");
-  }
+                      const std::string &data);
 
   template<typename T_itr> void append_aux(const char tag[2],
                                            const uint8_t aux_type, T_itr b_dat,
