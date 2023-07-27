@@ -88,7 +88,7 @@ private:
   int error_code{};
 };
 
-bam_outfile &
+inline bam_outfile &
 operator<<(bam_outfile &out, const bam_rec &br) {
   return out.put_bam_rec(br);
 }
