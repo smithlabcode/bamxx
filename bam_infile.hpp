@@ -1,3 +1,28 @@
+/* MIT License
+ *
+ * Copyright (c) 2023 Andrew Smith and Masaru Nakajima
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #ifndef BAM_INFILE_HPP
 #define BAM_INFILE_HPP
 
@@ -5,7 +30,7 @@
 
 #include <htslib/sam.h>
 
-#include "bam_record_ads.hpp"
+#include "bam_record.hpp"
 
 class bam_infile {
 public:
@@ -42,13 +67,21 @@ public:
 
     bam1_t *aln = bam_init1();
     error_code = sam_read1(fp, hdr, aln);
-    if (error_code < 0)
+    if (error_code < 0) {
       bam_destroy1(aln);
+      if (error_code < -1)
+        throw std::runtime_error("failure reading BAM/SAM file");
+    }
     else {
       error_code = 0; // ADS: `sam_read1` returns positive??
       bam_rec::steal(aln, br);
     }
     return *this;
+  }
+  bool is_mapped_reads_file() const {
+    const htsFormat *fmt = hts_get_format(fp);
+    return fmt->category != sequence_data &&
+      (fmt->format == bam && fmt->format == sam);
   }
 
   operator bool() const { return (error_code == 0); }
