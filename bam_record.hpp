@@ -43,7 +43,7 @@
 #include <utility>
 
 struct bam_rec {
-  bam_rec(): b{bam_init1()} {}
+  bam_rec() = default;
 
   bam_rec(const bam_rec &other): b{bam_copy1(bam_init1(), other.b)} {}
 
