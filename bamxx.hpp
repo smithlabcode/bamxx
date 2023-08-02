@@ -21,17 +21,6 @@
  * SOFTWARE.
  */
 
-/* ADS: need to control all the macros from HTSlib pollution. For
-   functions maybe:
-
-   $ gcc -dM -E sam.h | grep "define [a-z]" | awk '{print $2}' |\
-       grep "[(]" | awk -v FS="(" '{print "#undef",$1}'
-
-   This gives about 65 symbols that need to be deleted. For the others
-   I don't know what to do because some of them have "#define _" which
-   means they should be system symbols.
-*/
-
 #ifndef BAM_RECORD_HPP
 #define BAM_RECORD_HPP
 
@@ -61,10 +50,10 @@ namespace bamxx {
     bam1_t *b{};
   };
 
-  struct bam_infile {
-    explicit bam_infile(const std::string &fn): f{hts_open(fn.c_str(), "r")} {}
+  struct bam_in {
+    explicit bam_in(const std::string &fn): f{hts_open(fn.c_str(), "r")} {}
 
-    ~bam_infile() {
+    ~bam_in() {
       if (f != nullptr) hts_close(f);
     }
 
@@ -90,7 +79,7 @@ namespace bamxx {
 
     bam_header(const bam_header &rhs): h{bam_hdr_dup(rhs.h)} {}
 
-    explicit bam_header(bam_infile &in): h{sam_hdr_read(in.f)} {}
+    explicit bam_header(bam_in &in): h{sam_hdr_read(in.f)} {}
 
     ~bam_header() {
       if (h != nullptr) bam_hdr_destroy(h);
@@ -109,11 +98,11 @@ namespace bamxx {
     sam_hdr_t *h{};
   };
 
-  struct bam_outfile {
-    explicit bam_outfile(const std::string &fn, const bool fmt = false)
+  struct bam_out {
+    explicit bam_out(const std::string &fn, const bool fmt = false)
       : f{hts_open(fn.c_str(), fmt ? "bw" : "w")} {}
 
-    ~bam_outfile() {
+    ~bam_out() {
       if (f != nullptr) hts_close(f);
     }
 
