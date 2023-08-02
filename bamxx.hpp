@@ -142,6 +142,10 @@ struct bam_tpool {
     // ADS: (todo) get rid of exception
     if (ret < 0) throw std::runtime_error("failed to set thread pool");
   }
+  auto set_io(const bam_bgzf &bgzf) -> void {
+    const int ret = bgzf_thread_pool(bgzf.f, tpool.pool, tpool.qsize);
+    if (ret < 0) throw std::runtime_error("failed to set thread pool");
+  }
 
   htsThreadPool tpool{};
 };
