@@ -24,8 +24,9 @@
 #ifndef BAM_RECORD_HPP
 #define BAM_RECORD_HPP
 
-#include <htslib/sam.h>          // from HTSlib
-#include <htslib/thread_pool.h>  // from HTSlib
+#include <htslib/sam.h>
+#include <htslib/bgzf.h>
+#include <htslib/thread_pool.h>
 
 #include <stdexcept>
 #include <string>
@@ -116,6 +117,18 @@ struct bam_out {
   auto write(const bam_header &h) -> bool { return sam_hdr_write(f, h.h) == 0; }
 
   htsFile *f{};
+};
+
+struct bam_bgzf {
+  bam_bgzf(const std::string &fn, const std::string &mode) :
+    f{bgzf_open(fn.c_str(), mode.c_str())} {}
+  ~bam_bgzf() { if (f != nullptr) bgzf_close(f); }
+  operator bool() const { return f != nullptr; }
+  bool write(const char* const str, const size_t expected_size) {
+    const ssize_t res = bgzf_write(f, str, expected_size) >= 0;
+    return (res >= 0 && static_cast<size_t>(res) == expected_size);
+  }
+  BGZF *f{};
 };
 
 struct bam_tpool {
