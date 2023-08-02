@@ -56,7 +56,7 @@ struct bam_rec {
     if (b != nullptr) bam_destroy1(b);
   }
 
-  bam1_t *b;
+  bam1_t *b{};
 };
 
 struct bam_infile {
