@@ -61,6 +61,7 @@ struct bam_in {
   operator bool() const { return f != nullptr; }
 
   template<typename T> auto read(T &h, bam_rec &b) -> bool {
+    if (b.b == nullptr) b.b = bam_init1();
     const int x = sam_read1(f, h.h, b.b);  // -1 on EOF; args non-const
     // ADS: (todo) get rid of exception
     if (x < -1) throw std::runtime_error("failed reading bam record");
