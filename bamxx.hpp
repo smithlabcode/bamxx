@@ -24,8 +24,8 @@
 #ifndef BAM_RECORD_HPP
 #define BAM_RECORD_HPP
 
-#include <htslib/sam.h>
 #include <htslib/bgzf.h>
+#include <htslib/sam.h>
 #include <htslib/thread_pool.h>
 
 #include <stdexcept>
@@ -121,14 +121,31 @@ struct bam_out {
 };
 
 struct bam_bgzf {
-  bam_bgzf(const std::string &fn, const std::string &mode) :
-    f{bgzf_open(fn.c_str(), mode.c_str())} {}
-  ~bam_bgzf() { if (f != nullptr) bgzf_close(f); }
+  bam_bgzf(const std::string &fn, const std::string &mode)
+      : f{bgzf_open(fn.c_str(), mode.c_str())} {}
+
+  ~bam_bgzf() {
+    if (f != nullptr) bgzf_close(f);
+  }
+
   operator bool() const { return f != nullptr; }
-  bool write(const char* const str, const size_t expected_size) {
+
+  bool write(const char *const str, const size_t expected_size) {
     const ssize_t res = bgzf_write(f, str, expected_size) >= 0;
     return (res >= 0 && static_cast<size_t>(res) == expected_size);
   }
+
+  auto getline(std::string &line) -> bool {
+    kstring_t s{0, 0, nullptr};
+    const int x = bgzf_getline(f, '\n', &s);
+    // ADS: (todo) get rid of exception
+    if (x < -1) throw std::runtime_error("failed reading bgzf line");
+    line.resize(s.l);
+    std::copy(s.s, s.s + s.l, std::begin(line));
+    free(s.s);
+    return (x >= 0);
+  }
+
   BGZF *f{};
 };
 
@@ -143,6 +160,7 @@ struct bam_tpool {
     // ADS: (todo) get rid of exception
     if (ret < 0) throw std::runtime_error("failed to set thread pool");
   }
+
   auto set_io(const bam_bgzf &bgzf) -> void {
     const int ret = bgzf_thread_pool(bgzf.f, tpool.pool, tpool.qsize);
     if (ret < 0) throw std::runtime_error("failed to set thread pool");
