@@ -25,12 +25,14 @@
 #define BAM_RECORD_HPP
 
 #include <htslib/bgzf.h>
+#include <htslib/hfile.h>
 #include <htslib/sam.h>
 #include <htslib/thread_pool.h>
 
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <limits>
 
 namespace bamxx {
 
@@ -131,6 +133,10 @@ struct bam_bgzf {
   auto write(const char *const str, const size_t expected_size) -> bool {
     const ssize_t res = bgzf_write(f, str, expected_size) >= 0;
     return (res >= 0 && static_cast<size_t>(res) == expected_size);
+  }
+
+  auto tellg() const -> off_t {  // off_t is POSIX
+    return f == nullptr ? std::numeric_limits<off_t>::max() : htell(f->fp);
   }
 
   auto getline(std::string &line) -> bool {
