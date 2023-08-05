@@ -124,13 +124,11 @@ struct bam_bgzf {
   bam_bgzf(const std::string &fn, const std::string &mode)
       : f{bgzf_open(fn.c_str(), mode.c_str())} {}
 
-  ~bam_bgzf() {
-    if (f != nullptr) bgzf_close(f);
-  }
+  ~bam_bgzf() { destroy(); }
 
   operator bool() const { return f != nullptr; }
 
-  bool write(const char *const str, const size_t expected_size) {
+  auto write(const char *const str, const size_t expected_size) -> bool {
     const ssize_t res = bgzf_write(f, str, expected_size) >= 0;
     return (res >= 0 && static_cast<size_t>(res) == expected_size);
   }
@@ -140,6 +138,7 @@ struct bam_bgzf {
     const int x = bgzf_getline(f, '\n', &s);
     // ADS: (todo) get rid of exception
     if (x < -1) throw std::runtime_error("failed reading bgzf line");
+    if (x == -1) destroy();
     line.resize(s.l);
     std::copy(s.s, s.s + s.l, std::begin(line));
     free(s.s);
@@ -147,6 +146,13 @@ struct bam_bgzf {
   }
 
   BGZF *f{};
+private:
+  auto destroy() -> void {
+    if (f != nullptr) {
+      bgzf_close(f);
+      f = nullptr;
+    }
+  }
 };
 
 struct bam_tpool {
