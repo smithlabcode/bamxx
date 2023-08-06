@@ -29,10 +29,10 @@
 #include <htslib/sam.h>
 #include <htslib/thread_pool.h>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <limits>
 
 namespace bamxx {
 
@@ -140,6 +140,7 @@ struct bam_bgzf {
   }
 
   auto getline(std::string &line) -> bool {
+    if (f == nullptr) return false;
     kstring_t s{0, 0, nullptr};
     const int x = bgzf_getline(f, '\n', &s);
     // ADS: (todo) get rid of exception
