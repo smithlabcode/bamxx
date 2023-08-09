@@ -122,11 +122,11 @@ struct bam_out {
   htsFile *f{};
 };
 
-struct bam_bgzf {
-  bam_bgzf(const std::string &fn, const std::string &mode)
+struct bgzf_file {
+  bgzf_file(const std::string &fn, const std::string &mode)
       : f{bgzf_open(fn.c_str(), mode.c_str())} {}
 
-  ~bam_bgzf() { destroy(); }
+  ~bgzf_file() { destroy(); }
 
   operator bool() const { return f != nullptr; }
 
@@ -139,28 +139,27 @@ struct bam_bgzf {
     return f == nullptr ? std::numeric_limits<off_t>::max() : htell(f->fp);
   }
 
-  auto getline(std::string &line) -> bool {
-    if (f == nullptr) return false;
-    kstring_t s{0, 0, nullptr};
-    const int x = bgzf_getline(f, '\n', &s);
-    // ADS: (todo) get rid of exception
-    if (x < -1) throw std::runtime_error("failed reading bgzf line");
-    if (x == -1) destroy();
-    line.resize(s.l);
-    std::copy(s.s, s.s + s.l, std::begin(line));
-    free(s.s);
-    return (x >= 0);
-  }
-
-  BGZF *f{};
-private:
   auto destroy() -> void {
     if (f != nullptr) {
       bgzf_close(f);
       f = nullptr;
     }
   }
+  BGZF *f{};
 };
+
+
+auto getline(bgzf_file &file, std::string &line) -> bgzf_file & {
+  if (file.f == nullptr) return file;
+  kstring_t s{0, 0, nullptr};
+  const int x = bgzf_getline(file.f, '\n', &s);
+  if (x == -1) file.destroy();
+  line.resize(s.l);
+  std::copy(s.s, s.s + s.l, std::begin(line));
+  free(s.s);
+  return file;
+}
+
 
 struct bam_tpool {
   explicit bam_tpool(const int n_threads)
@@ -174,7 +173,7 @@ struct bam_tpool {
     if (ret < 0) throw std::runtime_error("failed to set thread pool");
   }
 
-  auto set_io(const bam_bgzf &bgzf) -> void {
+  auto set_io(const bgzf_file &bgzf) -> void {
     const int ret = bgzf_thread_pool(bgzf.f, tpool.pool, tpool.qsize);
     if (ret < 0) throw std::runtime_error("failed to set thread pool");
   }
