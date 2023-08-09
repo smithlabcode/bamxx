@@ -145,21 +145,26 @@ struct bgzf_file {
       f = nullptr;
     }
   }
+
   BGZF *f{};
 };
 
-
-inline auto getline(bgzf_file &file, std::string &line) -> bgzf_file & {
+inline auto
+getline(bgzf_file &file, std::string &line) -> bgzf_file & {
   if (file.f == nullptr) return file;
   kstring_t s{0, 0, nullptr};
   const int x = bgzf_getline(file.f, '\n', &s);
-  if (x == -1) file.destroy();
-  line.resize(s.l);
-  std::copy(s.s, s.s + s.l, std::begin(line));
-  free(s.s);
+  if (x == -1) {
+    file.destroy();
+    line.clear();
+  }
+  else {
+    line.resize(s.l);
+    std::copy(s.s, s.s + s.l, std::begin(line));
+  }
+  if (s.s != nullptr) free(s.s);
   return file;
 }
-
 
 struct bam_tpool {
   explicit bam_tpool(const int n_threads)
