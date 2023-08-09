@@ -130,9 +130,14 @@ struct bgzf_file {
 
   operator bool() const { return f != nullptr; }
 
-  auto write(const char *const str, const size_t expected_size) -> bool {
-    const ssize_t res = bgzf_write(f, str, expected_size) >= 0;
-    return (res >= 0 && static_cast<size_t>(res) == expected_size);
+  auto write(const std::string &s) -> bool {
+    const auto res = bgzf_write(f, s.c_str(), s.size());
+    return static_cast<size_t>(res) == s.size();
+  }
+
+  auto write(const char *const s, const size_t expected_size) -> bool {
+    const auto res = bgzf_write(f, s, expected_size);
+    return static_cast<size_t>(res) == expected_size;
   }
 
   auto tellg() const -> off_t {  // off_t is POSIX
