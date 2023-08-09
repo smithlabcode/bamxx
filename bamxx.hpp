@@ -149,7 +149,7 @@ struct bgzf_file {
 };
 
 
-auto getline(bgzf_file &file, std::string &line) -> bgzf_file & {
+inline auto getline(bgzf_file &file, std::string &line) -> bgzf_file & {
   if (file.f == nullptr) return file;
   kstring_t s{0, 0, nullptr};
   const int x = bgzf_getline(file.f, '\n', &s);
