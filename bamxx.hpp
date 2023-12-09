@@ -151,10 +151,16 @@ struct bgzf_file {
     }
   }
 
-  int compression() const {
+  bool is_compressed() const {
     // 0=no_compression, 1=gzip, 2=bgzf defined in the enum
     // htsCompression from hts.h
-    return bgzf_compression(f);
+    return bgzf_compression(f) > 0;
+  }
+
+  bool is_bgzf() const {
+    // 0=no_compression, 1=gzip, 2=bgzf defined in the enum
+    // htsCompression from hts.h
+    return bgzf_compression(f) == 2;
   }
 
   BGZF *f{};
