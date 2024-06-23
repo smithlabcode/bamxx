@@ -183,6 +183,28 @@ getline(bgzf_file &file, std::string &line) -> bgzf_file & {
   return file;
 }
 
+inline auto
+getline(bgzf_file &file, kstring_t &line) -> bgzf_file & {
+  if (file.f == nullptr) return file;
+  const int x = bgzf_getline(file.f, '\n', &line);
+  if (x == -1) {
+    file.destroy();
+    free(line.s);
+    line = {0, 0, nullptr};
+  }
+  if (x < -1) {
+    // ADS: this is an error condition and should be handled
+    // differently from the EOF above. Probably an exception is the
+    // wrong way to do this.
+    file.destroy();
+    free(line.s);
+    line = {0, 0, nullptr};
+    throw std::runtime_error{"failed reading bgzf file"};
+  }
+  return file;
+}
+
+
 struct bam_tpool {
   explicit bam_tpool(const int n_threads)
       : tpool{hts_tpool_init(n_threads), 0} {}
