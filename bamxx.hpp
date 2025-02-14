@@ -225,6 +225,6 @@ struct bam_tpool {
   htsThreadPool tpool{};
 };
 
-};  // namespace bamxx
+}  // namespace bamxx
 
 #endif
