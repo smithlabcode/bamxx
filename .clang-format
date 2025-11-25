@@ -3,3 +3,9 @@ BreakBeforeBraces: Custom
 BraceWrapping:
   BeforeElse: true
 IndentWrappedFunctionNames: false
+ColumnLimit: 80
+IndentWidth: 2
+AlwaysBreakAfterReturnType: All
+ContinuationIndentWidth: 2
+ConstructorInitializerIndentWidth: 2
+SpacesBeforeTrailingComments: 2
