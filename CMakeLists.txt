@@ -49,9 +49,9 @@ target_include_directories(bamxx INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(bamxx INTERFACE
+  HTSLIB::HTSLIB
   ZLIB::ZLIB
   Threads::Threads
-  HTSLIB::HTSLIB
 )
 if(LIBDEFLATE_FOUND)
   target_link_libraries(bamxx INTERFACE
