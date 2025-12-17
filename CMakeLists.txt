@@ -40,7 +40,21 @@ if(STATIC_ANALYSIS)
   include(cmake/static_analysis.cmake)
 endif()
 
+# Both zlib and threads are required for building with bamxx
+find_package(ZLIB REQUIRED)
+find_package(Threads REQUIRED)
+
 add_library(bamxx INTERFACE)
 target_include_directories(bamxx INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
+target_link_libraries(bamxx INTERFACE
+  ZLIB::ZLIB
+  Threads::Threads
+  HTSLIB::HTSLIB
+)
+if(LIBDEFLATE_FOUND)
+  target_link_libraries(bamxx INTERFACE
+    LIBDEFLATE::LIBDEFLATE
+  )
+endif()
